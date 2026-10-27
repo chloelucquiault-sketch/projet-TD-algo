@@ -1,95 +1,110 @@
-# Séjours Sportifs & Hébergements en Dortoirs
+# Alpes Camp — Colonies de sport outdoor
 
-Application web responsive permettant aux clubs, associations et sportifs d'organiser des séjours sportifs dans des complexes proposant des infrastructures, des dortoirs et une option de restauration.
+Application web responsive de réservation de séjours sportifs d'été et d'hiver dans les Alpes. Les familles peuvent consulter les départs publiés, inscrire un ou plusieurs participants et suivre leur demande. L'organisateur configure les départs et traite les inscriptions depuis un espace privé.
 
-Un séjour couvre plusieurs jours, avec un minimum de **deux nuits**. Le responsable du groupe choisit les sports, les dates, la taille et le type du groupe, les couchages et, éventuellement, une formule repas. Sa demande reste en attente jusqu'à son traitement par le gestionnaire.
+## Séjours proposés
+
+Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
+
+| Groupe | Âge recommandé | Durée |
+|---|---:|---:|
+| Les Petits | 5–7 ans | 4 jours |
+| Les Moyens | 8–11 ans | 7 jours |
+| Les Ados | 12–14 ans | 7 jours |
+| Adultes & Confirmés | 15 ans et plus | 7 jours |
+
+Chaque départ créé par l'organisateur est limité à **20 participants**. Aucune date, activité ou information de lieu n'est préchargée ou inventée : les départs ne deviennent visibles que lorsqu'ils sont configurés et publiés.
 
 ## Fonctionnalités
 
-- Catalogue public des complexes, filtrable par région, sport, période et capacité d'hébergement.
-- Fiche détaillée des infrastructures sportives, dortoirs et formules repas.
-- Parcours guidé de demande de séjour, utilisable sur mobile et ordinateur.
-- Comptes clients, suivi des demandes et états explicites : en attente, confirmée ou annulée.
-- Espace gestionnaire pour consulter et traiter les demandes, et ajouter les infrastructures, dortoirs et formules de restauration de son complexe.
-- Espace administrateur pour créer des complexes, assigner des gestionnaires et publier les complexes configurés.
-- Authentification par session PostgreSQL et autorisations vérifiées côté API.
+- Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
+- Jauge publique actualisée toutes les 15 secondes ; la disponibilité est toujours revérifiée au moment de l'inscription.
+- Inscription réservée aux comptes connectés, avec un formulaire permettant d'inscrire une fratrie.
+- Informations de naissance et consignes pratiques ; les informations de santé et les notes privées sont chiffrées en base.
+- Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
+- Espace client pour consulter uniquement ses propres inscriptions et leurs détails.
+- Espace organisateur protégé pour créer et publier les départs, voir les inscriptions et les confirmer ou annuler.
+- Vérification de la jauge côté serveur et compteur PostgreSQL protégé contre les inscriptions concurrentes.
+- Authentification par session PostgreSQL et cookie HTTP-only. L'inscription publique crée uniquement des comptes clients ; l'organisateur est créé par une commande locale.
 
-## Règles actuelles
+## Règles et conventions
 
-- La date d'arrivée doit être aujourd'hui ou ultérieure ; la date de départ doit laisser au moins deux nuits.
-- Les infrastructures sportives sélectionnées sont réservées sur toute la période du séjour et ne peuvent pas être attribuées à deux séjours qui se chevauchent.
-- Les couchages ont une capacité définie par dortoir. Les demandes en attente **et** confirmées bloquent les ressources jusqu'à annulation.
-- La disponibilité est revérifiée côté serveur lors de la création de la demande. PostgreSQL et le verrouillage transactionnel du complexe protègent contre les demandes concurrentes.
-- Une demande créée n'est pas automatiquement confirmée : seul le gestionnaire assigné peut la confirmer ou l'annuler.
-- Les prix, paiements en ligne, règles de remboursement et conditions d'annulation ne sont pas implémentés. Aucun paiement n'est collecté.
-- Les repas sont enregistrés comme une option associée au séjour ; les quantités, menus et capacités de restauration restent à définir.
+- Une durée de **4 jours** signifie quatre dates calendaires, date de début et date de fin incluses ; une durée de **7 jours** suit la même convention. La date de fin est calculée automatiquement à partir de la date de début et du groupe.
+- La jauge de 20 est fixe par départ. Les participants de demandes **en attente et confirmées** sont comptabilisés ; l'annulation d'une demande libère ses places.
+- Les âges affichés sont des recommandations. Une inscription hors tranche est possible et signalée à l'organisateur pour discussion ; le système ne décide pas d'une dérogation.
+- Les activités et descriptions sont saisies par l'organisateur pour chaque départ ; aucun programme fictif n'est prérempli.
+- Le calendrier, le lieu précis, les activités, les prix, les paiements, les annulations côté famille, les remboursements et les règles de répartition ne sont pas inventés ou simulés.
+- Aucun paiement n'est collecté.
+- Les dates de départ et les descriptions doivent être saisies par l'organisateur. Un départ ne peut plus changer de dates, saison ou groupe après la création d'une inscription.
 
-## Rôles
+## Données de santé et confidentialité
 
-- **Visiteur** : consulte le catalogue et les détails des complexes.
-- **Client / responsable de club** : crée un compte, soumet des demandes et suit leur état.
-- **Gestionnaire** : gère les ressources et les demandes de son complexe.
-- **Administrateur** : crée les complexes, attribue les gestionnaires et contrôle les publications.
+Les consignes alimentaires, informations médicales et demandes particulières sont chiffrées avec AES-256-GCM avant leur enregistrement. La clé `HEALTH_DATA_ENCRYPTION_KEY` est distincte du secret de session, n'est jamais stockée dans la base et doit être sauvegardée de manière sécurisée : sans cette clé, les champs privés déjà enregistrés ne pourront plus être déchiffrés. Elle ne doit jamais être commise ni partagée.
 
-Les inscriptions publiques créent uniquement des comptes clients. Le premier administrateur est créé par une commande locale ; les comptes gestionnaires sont ensuite créés depuis l'espace d'administration.
+Les données privées sont renvoyées uniquement au compte client propriétaire et à l'administrateur. Le catalogue public ne reçoit aucune donnée de participant. Le consentement explicite est enregistré avec son horodatage et sa version.
 
-## Stack technique
+**Avant une mise en production, il faut définir et mettre en œuvre une durée de conservation, la procédure d'effacement, les modalités de consentement du représentant légal et l'information des familles.** La case de consentement et le chiffrement technique ne remplacent pas cette décision ni une validation juridique.
+
+## Stack et organisation
 
 - **Frontend** : React, TypeScript, Vite et React Router.
-- **Backend** : Node.js, TypeScript, Express et API REST.
-- **Base de données** : PostgreSQL, avec migration SQL versionnée.
+- **Backend** : Node.js, Express et TypeScript, API REST.
+- **Base de données** : PostgreSQL avec migrations SQL versionnées.
 - **Dépendances** : npm workspaces.
+- `apps/web` contient l'application responsive.
+- `apps/api` contient l'API, la couche de persistance et les migrations.
+- `docs/API.md` décrit les routes principales.
 
-## Démarrage local
+La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. Elle ne modifie ni ne supprime les anciennes tables et réservations des versions précédentes ; aucune conversion automatique de ces réservations en inscriptions de colonie n'est effectuée.
 
-Prérequis : Node.js **20 ou plus récent** avec npm, et Docker Desktop lancé (ou une instance PostgreSQL 17 accessible).
+## Démarrage local (Windows / PowerShell)
 
-1. Créer la configuration locale et définir un secret de session :
+Prérequis : Node.js **20 ou plus récent** avec npm, et Docker Desktop (ou PostgreSQL 17 accessible).
+
+1. Copier la configuration locale :
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-   Dans `.env`, remplace `SESSION_SECRET` par une valeur aléatoire d'au moins 32 caractères. Tu peux en générer une avec :
+2. Dans `.env`, remplacer `SESSION_SECRET` par une chaîne aléatoire d'au moins 32 caractères et renseigner `HEALTH_DATA_ENCRYPTION_KEY` avec une clé hexadécimale de 64 caractères. Générer chaque valeur séparément :
 
    ```powershell
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-2. Démarrer PostgreSQL avec Docker :
+   Ne réutilise pas la même valeur pour les deux secrets. Garde la clé de chiffrement en lieu sûr et conserve-la pour pouvoir lire les données chiffrées.
+
+3. Démarrer PostgreSQL local :
 
    ```powershell
    docker compose up -d postgres
    ```
 
-   Les identifiants du conteneur local sont définis dans `docker-compose.yml`. Ils sont réservés au développement ; ne les utilise pas en production.
-
-3. Installer les dépendances et préparer la base :
+4. Installer les dépendances et appliquer les migrations :
 
    ```powershell
    npm install
    npm run db:migrate
    ```
 
-4. Créer le premier administrateur. Définis les valeurs dans le terminal courant, puis lance le script :
+5. Créer le compte administrateur unique (les valeurs ne sont pas enregistrées dans le dépôt) :
 
    ```powershell
-   $env:ADMIN_EMAIL = "admin@exemple.fr"
+   $env:ADMIN_EMAIL = "organisateur@exemple.fr"
    $env:ADMIN_PASSWORD = "un-mot-de-passe-long-et-unique"
-   $env:ADMIN_FULL_NAME = "Administrateur"
+   $env:ADMIN_FULL_NAME = "Organisateur Alpes Camp"
    npm run admin:create
    Remove-Item Env:ADMIN_EMAIL, Env:ADMIN_PASSWORD, Env:ADMIN_FULL_NAME
    ```
 
-5. Lancer l'API et le frontend :
+6. Lancer l'API et le frontend :
 
    ```powershell
    npm run dev
    ```
 
-   Ouvre ensuite [http://localhost:5173](http://localhost:5173). L'API écoute sur `http://localhost:3001`.
-
-Dans l'espace administrateur, crée un complexe en brouillon puis un compte gestionnaire. Le gestionnaire peut ensuite y ajouter au moins une infrastructure et un dortoir. L'administrateur peut alors publier le complexe ; il apparaîtra dans le catalogue public. Les données du catalogue sont administrées dans l'application, sans comptes ou réservations de démonstration préchargés.
+   Ouvre [http://localhost:5173](http://localhost:5173). L'API est disponible sur `http://localhost:3001`. Connecte-toi avec le compte organisateur pour créer les premiers départs réels et ouvrir les inscriptions.
 
 ## Configuration
 
@@ -97,11 +112,12 @@ Les variables sont documentées dans `.env.example` :
 
 - `DATABASE_URL` : chaîne de connexion PostgreSQL.
 - `SESSION_SECRET` : secret de session d'au moins 32 caractères.
+- `HEALTH_DATA_ENCRYPTION_KEY` : clé AES-256 de 32 octets représentée par 64 caractères hexadécimaux.
 - `API_PORT` : port Express (par défaut `3001`).
-- `WEB_ORIGIN` : origine web autorisée à envoyer des requêtes de modification (par défaut `http://localhost:5173`).
+- `WEB_ORIGIN` : origine web autorisée pour les requêtes de modification (par défaut `http://localhost:5173`).
 - `COOKIE_SECURE` : force l'attribut `Secure` des cookies lorsque nécessaire.
 
-En production, configure `NODE_ENV=production`, un secret robuste, HTTPS avec cookies sécurisés, une base PostgreSQL dédiée et un proxy qui expose l'API et le frontend sous la même origine.
+En production, configure HTTPS, des cookies sécurisés, des secrets gérés hors du dépôt, une base PostgreSQL dédiée, des sauvegardes chiffrées et une politique de conservation avant de recueillir des données personnelles.
 
 ## Tests et build
 
@@ -110,26 +126,21 @@ npm test
 npm run build
 ```
 
-Les tests unitaires vérifient les dates, les durées minimales, les comptes et la cohérence des couchages. Un test d'intégration PostgreSQL vérifie que deux demandes concurrentes ne peuvent pas réserver le même équipement :
+Les tests unitaires couvrent la validation des dates, durées et consentements ainsi que le chiffrement des champs privés. Les tests d'intégration PostgreSQL couvrent les rôles, les migrations et la jauge concurrente.
 
-1. Crée une base de test **distincte** de la base de développement :
+Pour les tests d'intégration, crée une base dédiée distincte de ta base de développement :
 
-   ```powershell
-   docker compose exec -T postgres createdb -U sejours sejours_test
-   ```
+```powershell
+docker compose exec -T postgres createdb -U sejours sejours_test
+$env:TEST_DATABASE_URL = "postgresql://sejours:sejours@localhost:5432/sejours_test"
+$env:DATABASE_URL = $env:TEST_DATABASE_URL
+npm run db:migrate
+npm test
+Remove-Item Env:TEST_DATABASE_URL, Env:DATABASE_URL
+```
 
-2. Configure les deux variables pour appliquer les migrations à cette base, puis exécute les tests :
-
-   ```powershell
-   $env:TEST_DATABASE_URL = "postgres://sejours:sejours@localhost:5432/sejours_test"
-   $env:DATABASE_URL = $env:TEST_DATABASE_URL
-   npm run db:migrate
-   npm test
-   Remove-Item Env:TEST_DATABASE_URL, Env:DATABASE_URL
-   ```
-
-Le test d'intégration est ignoré si `TEST_DATABASE_URL` n'est pas défini. Ne pointe jamais cette variable vers une base contenant des données à conserver : le test crée puis supprime ses propres enregistrements.
+Le test PostgreSQL est ignoré lorsque `TEST_DATABASE_URL` n'est pas défini. Ne pointe jamais cette variable vers une base contenant des données à conserver : les tests insèrent puis suppriment leurs données de test.
 
 ## API
 
-Les principales routes et leurs permissions sont décrites dans [docs/API.md](./docs/API.md). L'API documente également son endpoint de santé `GET /health`.
+Les routes de catalogue, d'inscription, d'authentification et d'administration sont documentées dans [docs/API.md](./docs/API.md). L'API documente également `GET /health`.
