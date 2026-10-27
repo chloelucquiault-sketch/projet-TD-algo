@@ -19,13 +19,21 @@ try {
     throw new Error("Définis ADMIN_EMAIL, ADMIN_PASSWORD (12 caractères minimum) et ADMIN_FULL_NAME.");
   }
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const result = await pool.query(
-    `INSERT INTO users (email, password_hash, full_name, role)
-     VALUES ($1, $2, $3, 'admin')
-     ON CONFLICT (email) DO NOTHING
-     RETURNING id`,
-    [parsed.data.email, passwordHash, parsed.data.fullName],
-  );
+  let result;
+  try {
+    result = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, role)
+       VALUES ($1, $2, $3, 'admin')
+       ON CONFLICT (email) DO NOTHING
+       RETURNING id`,
+      [parsed.data.email, passwordHash, parsed.data.fullName],
+    );
+  } catch (error) {
+    if ((error as { constraint?: string }).constraint === "users_single_admin_idx") {
+      throw new Error("Un seul administrateur peut exister. Le compte administrateur est déjà configuré.");
+    }
+    throw error;
+  }
   if (!result.rowCount) {
     const existing = await pool.query<{ role: string }>(
       "SELECT role FROM users WHERE email = $1",

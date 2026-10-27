@@ -7,21 +7,42 @@ const stayDatesBaseSchema = z.object({
   checkOut: isoDate,
 });
 
+function todayInParis() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function isValidDate(value: string) {
+  const timestamp = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;
+}
+
+export const dayDateSchema = isoDate.refine(
+  (value) => isValidDate(value) && value >= todayInParis(),
+  "Choisis une date valide, aujourd'hui ou ultérieure.",
+);
+
 function refineStayDates(
   { checkIn, checkOut }: { checkIn: string; checkOut: string },
   context: z.RefinementCtx,
 ) {
   const start = Date.parse(`${checkIn}T00:00:00Z`);
   const end = Date.parse(`${checkOut}T00:00:00Z`);
-  const validStart = Number.isFinite(start) && new Date(start).toISOString().slice(0, 10) === checkIn;
-  const validEnd = Number.isFinite(end) && new Date(end).toISOString().slice(0, 10) === checkOut;
+  const validStart = isValidDate(checkIn);
+  const validEnd = isValidDate(checkOut);
   if (!validStart) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["checkIn"], message: "Date d'arrivée invalide." });
   }
   if (!validEnd) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["checkOut"], message: "Date de départ invalide." });
   }
-  if (validStart && checkIn < new Date().toISOString().slice(0, 10)) {
+  if (validStart && checkIn < todayInParis()) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["checkIn"],
@@ -53,7 +74,8 @@ export const registerSchema = z.object({
   organizationName: z.string().trim().max(160).optional(),
 });
 
-export const bookingSchema = stayDatesBaseSchema.extend({
+const stayBookingSchema = stayDatesBaseSchema.extend({
+  bookingType: z.literal("stay"),
   complexId: z.string().uuid(),
   groupSize: z.number().int().min(1).max(500),
   groupType: z.string().trim().min(2).max(80),
@@ -80,3 +102,42 @@ export const bookingSchema = stayDatesBaseSchema.extend({
     context.addIssue({ code: z.ZodIssueCode.custom, path: ["dormitories"], message: "Un dortoir est sélectionné plusieurs fois." });
   }
 });
+
+const dayStartTime = z.string().regex(
+  /^(?:(?:08|09|1[0-6]):(?:00|30)|17:00)$/,
+  "Les créneaux doivent commencer entre 8 h et 17 h, par demi-heure.",
+);
+
+function timeToMinutes(value: string) {
+  const hours = Number(value.slice(0, 2));
+  const minutes = Number(value.slice(3, 5));
+  return hours * 60 + minutes;
+}
+
+export const dayBookingSchema = z.object({
+  bookingType: z.literal("day"),
+  complexId: z.string().uuid(),
+  checkIn: dayDateSchema,
+  facilityId: z.string().uuid(),
+  startTimes: z.array(dayStartTime).min(1).max(3),
+  groupSize: z.number().int().min(1).max(500),
+  groupType: z.string().trim().min(2).max(80),
+}).superRefine((value, context) => {
+  if (new Set(value.startTimes).size !== value.startTimes.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["startTimes"],
+      message: "Un créneau ne peut être sélectionné qu'une seule fois.",
+    });
+  }
+  const sorted = value.startTimes.map(timeToMinutes).sort((a, b) => a - b);
+  if (sorted.some((start, index) => index > 0 && start - (sorted[index - 1]! + 180) < 30)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["startTimes"],
+      message: "Laisse au moins 30 minutes entre deux créneaux réservés par ton équipe.",
+    });
+  }
+});
+
+export const bookingSchema = z.union([stayBookingSchema, dayBookingSchema]);

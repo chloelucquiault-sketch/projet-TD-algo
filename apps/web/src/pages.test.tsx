@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./pages";
@@ -25,9 +25,9 @@ const details = {
     name: "Terrain de football",
     facilityType: "Terrain",
     description: "Terrain en gazon.",
-    sportId: "a1c75f84-bdbb-4d32-b983-8dba998df004",
-    sportName: "Football",
-    sportSlug: "football",
+    sportIds: ["a1c75f84-bdbb-4d32-b983-8dba998df004", "f750bcef-aeb6-482a-9669-abccf2623810"],
+    sportNames: ["Football", "Rugby"],
+    sportSlugs: ["football", "rugby"],
   }],
   dormitories: [{
     id: "9e40ae15-ae50-4de0-a54d-419a6d93d1e2",
@@ -50,16 +50,27 @@ function dateIn(days: number) {
 }
 
 function mockApi(signedIn = false) {
+  let authenticated = signedIn;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
     let body: unknown;
     let status = 200;
-    if (path === "/api/auth/me") body = { user: signedIn ? user : null };
+    if (path === "/api/auth/me") body = { user: authenticated ? user : null };
+    else if (path === "/api/auth/login" && init?.method === "POST") {
+      authenticated = true;
+      body = { user };
+    }
     else if (path === "/api/complexes") body = { complexes: [complexSummary] };
-    else if (path === "/api/sports") body = { sports: [{ id: details.facilities[0]!.sportId, name: "Football", slug: "football" }] };
+    else if (path === "/api/sports") body = { sports: details.facilities[0]!.sportIds.map((id, index) => ({ id, name: details.facilities[0]!.sportNames[index], slug: details.facilities[0]!.sportSlugs[index] })) };
     else if (path === `/api/complexes/${complexId}`) body = details;
     else if (path.startsWith(`/api/complexes/${complexId}/availability`)) {
       body = { available: true, availableBeds: 24, dormitories: [{ id: details.dormitories[0]!.id, name: "Dortoir des Pins", available_beds: 24 }] };
+    } else if (path.startsWith(`/api/complexes/${complexId}/day-availability`)) {
+      body = { slots: [
+        { startTime: "08:00", available: true },
+        { startTime: "11:30", available: true },
+        { startTime: "17:00", available: true },
+      ] };
     } else if (path === "/api/bookings" && init?.method === "POST") {
       body = { booking: { id: "booking-id", status: "pending" } };
       status = 201;
@@ -80,10 +91,36 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("application web", () => {
+  it("fait défiler automatiquement les photos du bandeau", () => {
+    mockApi();
+    vi.useFakeTimers();
+    render(<BrowserRouter><App /></BrowserRouter>);
+
+    expect(screen.getByRole("img", { name: /vallée alpine au petit matin/i })).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(5500); });
+    expect(screen.getByRole("img", { name: /Alpes suisses sous la neige/i })).toBeTruthy();
+  });
+
+  it("fait défiler les photos des séjours dans un carrousel accessible", async () => {
+    mockApi();
+    const { container } = render(<BrowserRouter><App /></BrowserRouter>);
+
+    const carousel = await screen.findByRole("region", { name: "Photos des séjours sportifs" });
+    expect(container.querySelector(".hero-art, .hero-sticker")).toBeNull();
+    expect(carousel.querySelectorAll("figure")).toHaveLength(4);
+    expect(screen.getByRole("img", { name: /vallée alpine au petit matin/i })).toBeTruthy();
+    expect(screen.queryByText("LE SÉJOUR, SANS LES COMPLICATIONS")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Photo suivante" }));
+    expect(screen.getByRole("img", { name: /Alpes suisses sous la neige/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mettre en pause le défilement" }));
+    expect(screen.getByRole("button", { name: "Reprendre le défilement" })).toBeTruthy();
+  });
+
   it("affiche le catalogue et ouvre une fiche de complexe", async () => {
     mockApi();
     render(<BrowserRouter><App /></BrowserRouter>);
@@ -91,7 +128,23 @@ describe("application web", () => {
     fireEvent.click(screen.getByRole("link", { name: "Découvrir Domaine des Cèdres" }));
     expect(await screen.findByRole("heading", { name: "Domaine des Cèdres" })).toBeTruthy();
     expect(screen.getByText("Terrain de football")).toBeTruthy();
+    expect(screen.getByText(/Football · Rugby/)).toBeTruthy();
     expect(screen.getByText("Dortoir des Pins")).toBeTruthy();
+  });
+
+  it("impose la connexion avant d'afficher les choix de réservation", async () => {
+    mockApi();
+    window.history.replaceState({}, "", `/reservation/${complexId}`);
+    render(<BrowserRouter><App /></BrowserRouter>);
+
+    expect(await screen.findByRole("heading", { name: "On reprend le jeu." })).toBeTruthy();
+    expect(window.location.search).toContain(encodeURIComponent(`/reservation/${complexId}`));
+    fireEvent.change(screen.getByLabelText("ADRESSE E-MAIL"), { target: { value: user.email } });
+    fireEvent.change(screen.getByLabelText(/MOT DE PASSE/), { target: { value: "mot-de-passe-test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+    expect(await screen.findByRole("heading", { name: /Comment voulez-vous jouer/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Réserver à la journée/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Réserver un séjour/i })).toBeTruthy();
   });
 
   it("permet de créer une demande depuis le parcours guidé", async () => {
@@ -99,6 +152,7 @@ describe("application web", () => {
     window.history.replaceState({}, "", `/reservation/${complexId}`);
     render(<BrowserRouter><App /></BrowserRouter>);
 
+    fireEvent.click(await screen.findByRole("button", { name: /Réserver un séjour/i }));
     fireEvent.click(await screen.findByRole("button", { name: /Continuer/i }));
     fireEvent.change(screen.getByLabelText("DATE D'ARRIVÉE"), { target: { value: dateIn(10) } });
     fireEvent.change(screen.getByLabelText("DATE DE DÉPART"), { target: { value: dateIn(13) } });
@@ -111,6 +165,27 @@ describe("application web", () => {
     await waitFor(() => {
       const requests = vi.mocked(fetch).mock.calls;
       expect(requests.some(([path]) => path === "/api/bookings")).toBe(true);
+    });
+  });
+
+  it("permet de réserver plusieurs créneaux à la journée", async () => {
+    mockApi(true);
+    window.history.replaceState({}, "", `/reservation/${complexId}`);
+    render(<BrowserRouter><App /></BrowserRouter>);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Réserver à la journée/i }));
+    fireEvent.change(screen.getByLabelText("DATE"), { target: { value: dateIn(10) } });
+    fireEvent.click(screen.getByRole("button", { name: "Vérifier les créneaux" }));
+    fireEvent.click(await screen.findByRole("button", { name: /08:00/ }));
+    fireEvent.click(screen.getByRole("button", { name: /11:30/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Envoyer ma demande/i }));
+
+    expect(await screen.findByText("DEMANDE TRANSMISE")).toBeTruthy();
+    const request = vi.mocked(fetch).mock.calls.find(([path]) => path === "/api/bookings");
+    expect(request).toBeTruthy();
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      bookingType: "day",
+      startTimes: ["08:00", "11:30"],
     });
   });
 });

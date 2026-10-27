@@ -2,7 +2,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
-  role: "customer" | "manager" | "admin";
+  role: "customer" | "admin";
 }
 
 export interface ComplexSummary {
@@ -21,9 +21,9 @@ export interface Facility {
   name: string;
   facilityType: string;
   description: string;
-  sportId: string;
-  sportName: string;
-  sportSlug: string;
+  sportIds: string[];
+  sportNames: string[];
+  sportSlugs: string[];
 }
 
 export interface Dormitory {
@@ -54,7 +54,10 @@ export interface ComplexDetails {
 }
 
 interface ApiErrorBody {
-  error?: { message?: string };
+  error?: {
+    message?: string;
+    details?: { field: string; message: string }[];
+  };
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -68,7 +71,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw new Error(body.error?.message ?? `La requête a échoué (${response.status}).`);
+    const message = body.error?.message ?? `La requête a échoué (${response.status}).`;
+    const details = body.error?.details
+      ?.map((detail) => `${detail.field}: ${detail.message}`)
+      .join(" ");
+    throw new Error(details ? `${message} ${details}` : message);
   }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;

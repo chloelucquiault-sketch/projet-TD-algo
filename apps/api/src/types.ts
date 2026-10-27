@@ -1,4 +1,4 @@
-export type UserRole = "customer" | "manager" | "admin";
+export type UserRole = "customer" | "admin";
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 export interface AuthenticatedUser {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingSchema, registerSchema, stayDatesSchema } from "./validation.js";
+import { bookingSchema, dayBookingSchema, registerSchema, stayDatesSchema } from "./validation.js";
 
 function dateIn(days: number) {
   const date = new Date();
@@ -38,6 +38,7 @@ describe("validation des comptes et demandes", () => {
 
   it("refuse une réservation dont les couchages sont insuffisants", () => {
     const result = bookingSchema.safeParse({
+      bookingType: "stay",
       complexId: "1c7d9a72-40db-4d2e-aadf-0e8ce1b10f80",
       checkIn: dateIn(10),
       checkOut: dateIn(12),
@@ -51,5 +52,47 @@ describe("validation des comptes et demandes", () => {
     if (!result.success) {
       expect(result.error.issues.some((issue) => issue.path[0] === "dormitories")).toBe(true);
     }
+  });
+
+  it("accepte plusieurs créneaux journaliers séparés par le délai requis", () => {
+    const result = dayBookingSchema.safeParse({
+      bookingType: "day",
+      complexId: "1c7d9a72-40db-4d2e-aadf-0e8ce1b10f80",
+      checkIn: dateIn(10),
+      facilityId: "cdacb303-27f7-47f6-bac5-c8e5c21fba68",
+      startTimes: ["08:00", "11:30", "15:00"],
+      groupSize: 12,
+      groupType: "Club sportif",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("refuse les créneaux qui se chevauchent ou ignorent la pause de 30 minutes", () => {
+    const result = dayBookingSchema.safeParse({
+      bookingType: "day",
+      complexId: "1c7d9a72-40db-4d2e-aadf-0e8ce1b10f80",
+      checkIn: dateIn(10),
+      facilityId: "cdacb303-27f7-47f6-bac5-c8e5c21fba68",
+      startTimes: ["08:00", "11:00"],
+      groupSize: 12,
+      groupType: "Club sportif",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path[0] === "startTimes")).toBe(true);
+    }
+  });
+
+  it("refuse un créneau qui finirait après 20 h", () => {
+    const result = dayBookingSchema.safeParse({
+      bookingType: "day",
+      complexId: "1c7d9a72-40db-4d2e-aadf-0e8ce1b10f80",
+      checkIn: dateIn(10),
+      facilityId: "cdacb303-27f7-47f6-bac5-c8e5c21fba68",
+      startTimes: ["17:30"],
+      groupSize: 12,
+      groupType: "Club sportif",
+    });
+    expect(result.success).toBe(false);
   });
 });

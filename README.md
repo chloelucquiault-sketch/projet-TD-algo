@@ -15,6 +15,15 @@ Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
 
 Chaque départ créé par l'organisateur est limité à **20 participants**. Aucune date, activité ou information de lieu n'est préchargée ou inventée : les départs ne deviennent visibles que lorsqu'ils sont configurés et publiés.
 
+## Calendrier des saisons
+
+Les dates de saison sont inclusives. Un séjour entier, date de fin comprise, doit rester dans sa période :
+
+- **Hiver** : du 15 décembre au 31 mars ; un séjour d'hiver peut traverser le changement d'année.
+- **Été** : du 10 mai au 30 septembre.
+
+Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **30 septembre**. L'API valide la période et PostgreSQL la protège également par une contrainte ; un départ qui dépasse la fenêtre est refusé.
+
 ## Fonctionnalités
 
 - Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
@@ -43,7 +52,9 @@ Les consignes alimentaires, informations médicales et demandes particulières s
 
 Les données privées sont renvoyées uniquement au compte client propriétaire et à l'administrateur. Le catalogue public ne reçoit aucune donnée de participant. Le consentement explicite est enregistré avec son horodatage et sa version.
 
-**Avant une mise en production, il faut définir et mettre en œuvre une durée de conservation, la procédure d'effacement, les modalités de consentement du représentant légal et l'information des familles.** La case de consentement et le chiffrement technique ne remplacent pas cette décision ni une validation juridique.
+Les informations médicales, restrictions alimentaires et demandes particulières chiffrées sont conservées jusqu'à la fin du séjour (date de fin incluse), puis effacées automatiquement par l'API au démarrage et toutes les 15 minutes. Après la date de fin, elles ne sont plus renvoyées par les routes, même avant l'effacement en base. Si l'API est arrêtée à ce moment-là, l'effacement est effectué à son prochain démarrage. Comme ces informations sont regroupées dans un seul champ chiffré, l'effacement retire également les demandes particulières qui y sont stockées. Les autres données d'inscription (identité, date de naissance, consentement et historique) ne sont pas supprimées par ce mécanisme et nécessitent une politique de conservation distincte.
+
+La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalités de consentement du représentant légal et l'information des familles restent à définir avant une mise en production. La case de consentement et le chiffrement technique ne remplacent pas une validation juridique.
 
 ## Stack et organisation
 
@@ -55,11 +66,28 @@ Les données privées sont renvoyées uniquement au compte client propriétaire 
 - `apps/api` contient l'API, la couche de persistance et les migrations.
 - `docs/API.md` décrit les routes principales.
 
-La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. Elle ne modifie ni ne supprime les anciennes tables et réservations des versions précédentes ; aucune conversion automatique de ces réservations en inscriptions de colonie n'est effectuée.
+La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
 
 ## Démarrage local (Windows / PowerShell)
 
 Prérequis : Node.js **20 ou plus récent** avec npm, et Docker Desktop (ou PostgreSQL 17 accessible).
+
+Vérifie que Node.js et npm sont accessibles depuis le terminal VS Code :
+
+```powershell
+node --version
+npm.cmd --version
+```
+
+Si `npm` n'est pas reconnu alors que Node.js est installé dans son emplacement Windows habituel, ajoute son dossier au `PATH` du terminal courant, puis vérifie à nouveau :
+
+```powershell
+$env:Path += ";C:\Program Files\nodejs"
+node --version
+npm.cmd --version
+```
+
+Cette correction est temporaire pour le terminal courant. Pour la rendre permanente, ajoute `C:\Program Files\nodejs` à la variable utilisateur `Path` dans les paramètres d'environnement Windows, puis ferme et rouvre VS Code. Dans les étapes ci-dessous, `npm.cmd` évite également les blocages liés à la politique d'exécution de PowerShell.
 
 1. Copier la configuration locale :
 
@@ -84,27 +112,38 @@ Prérequis : Node.js **20 ou plus récent** avec npm, et Docker Desktop (ou Post
 4. Installer les dépendances et appliquer les migrations :
 
    ```powershell
-   npm install
-   npm run db:migrate
+   npm.cmd install
+   npm.cmd run db:migrate
    ```
 
-5. Créer le compte administrateur unique (les valeurs ne sont pas enregistrées dans le dépôt) :
+5. Créer le compte administrateur unique (à faire une seule fois ; l'inscription publique ne crée que des comptes clients). Remplace les exemples par ton adresse, ton nom et un mot de passe fort qui ne sera pas enregistré dans le dépôt :
 
    ```powershell
    $env:ADMIN_EMAIL = "organisateur@exemple.fr"
    $env:ADMIN_PASSWORD = "un-mot-de-passe-long-et-unique"
    $env:ADMIN_FULL_NAME = "Organisateur Alpes Camp"
-   npm run admin:create
+   npm.cmd run admin:create
    Remove-Item Env:ADMIN_EMAIL, Env:ADMIN_PASSWORD, Env:ADMIN_FULL_NAME
    ```
+
+   Si PowerShell indique qu'un administrateur existe déjà, ne relance pas cette commande : utilise le compte existant. Après le démarrage du site, connecte-toi sur [http://localhost:5173/connexion](http://localhost:5173/connexion) avec ces identifiants ; le lien **Espace organisateur** apparaît dans la navigation.
 
 6. Lancer l'API et le frontend :
 
    ```powershell
-   npm run dev
+   npm.cmd run dev
    ```
 
    Ouvre [http://localhost:5173](http://localhost:5173). L'API est disponible sur `http://localhost:3001`. Connecte-toi avec le compte organisateur pour créer les premiers départs réels et ouvrir les inscriptions.
+
+## Crédits des photos
+
+Les photos du bandeau sont stockées localement dans `apps/web/public/images` et créditées dans le carrousel :
+
+- Été alpin — Sternenjaeger, CC0 ([source](https://commons.wikimedia.org/wiki/File:Summer_morning_in_the_Swiss_Alps.jpg)).
+- Alpes en hiver — Giles Laurent, CC BY-SA 4.0 ([source](https://commons.wikimedia.org/wiki/File:Swiss_alps_seen_from_Creux_du_Van_under_the_winter_snow_Photo_by_Giles_Laurent.jpg)).
+- Enfants en randonnée alpine — SWT666, CC BY-SA 4.0 ([source](https://commons.wikimedia.org/wiki/File:Two_kids_resting_during_a_hike_on_the_Alps.jpg)).
+- Enfants jouant au football dehors — Cecil Dzwowa, CC BY-SA 4.0 ([source](https://commons.wikimedia.org/wiki/File:Children_playing_football_in_street.jpg)).
 
 ## Configuration
 
@@ -122,8 +161,8 @@ En production, configure HTTPS, des cookies sécurisés, des secrets gérés hor
 ## Tests et build
 
 ```powershell
-npm test
-npm run build
+npm.cmd test
+npm.cmd run build
 ```
 
 Les tests unitaires couvrent la validation des dates, durées et consentements ainsi que le chiffrement des champs privés. Les tests d'intégration PostgreSQL couvrent les rôles, les migrations et la jauge concurrente.
@@ -134,8 +173,8 @@ Pour les tests d'intégration, crée une base dédiée distincte de ta base de d
 docker compose exec -T postgres createdb -U sejours sejours_test
 $env:TEST_DATABASE_URL = "postgresql://sejours:sejours@localhost:5432/sejours_test"
 $env:DATABASE_URL = $env:TEST_DATABASE_URL
-npm run db:migrate
-npm test
+npm.cmd run db:migrate
+npm.cmd test
 Remove-Item Env:TEST_DATABASE_URL, Env:DATABASE_URL
 ```
 

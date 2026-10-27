@@ -8,10 +8,13 @@ import { pool } from "./db/pool.js";
 import { errorHandler, HttpError } from "./errors.js";
 import { loadUser } from "./middleware/auth.js";
 import routes from "./routes.js";
+import campRoutes from "./camp-routes.js";
+import { assertHealthDataEncryptionKey } from "./security/health-data.js";
 
 const PgSession = connectPgSimple(session);
 
 export function createApp() {
+  assertHealthDataEncryptionKey();
   const app = express();
   const production = process.env.NODE_ENV === "production";
   const sessionSecret = process.env.SESSION_SECRET;
@@ -21,7 +24,7 @@ export function createApp() {
   app.disable("x-powered-by");
   if (production) app.set("trust proxy", 1);
   app.use(helmet());
-  app.use(express.json({ limit: "100kb" }));
+  app.use(express.json({ limit: "512kb" }));
   app.use(session({
     name: "sid",
     secret: sessionSecret,
@@ -64,6 +67,7 @@ export function createApp() {
   }));
   app.use(loadUser);
   app.use(routes);
+  app.use(campRoutes);
   app.use((_request, response) => {
     response.status(404).json({ error: { code: "NOT_FOUND", message: "Cette ressource n'existe pas." } });
   });

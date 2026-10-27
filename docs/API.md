@@ -1,70 +1,102 @@
-# API REST
+# API REST — Alpes Camp
 
-Base locale : `http://localhost:3001`. Les réponses d'erreur utilisent la forme `{ "error": { "code": "...", "message": "..." } }`. Les sessions sont conservées dans PostgreSQL et transmises par cookie HTTP-only `sid`.
+Base locale : `http://localhost:3001`. Les erreurs suivent la forme `{ "error": { "code": "...", "message": "..." } }`. Les sessions utilisent un cookie HTTP-only `sid` stocké dans PostgreSQL ; le navigateur n'a pas de jeton à gérer.
 
-## Santé, catalogue et disponibilité
-
-| Méthode | Route | Accès | Description |
-|---|---|---|---|
-| `GET` | `/health` | Public | État de l'API et connexion à PostgreSQL |
-| `GET` | `/api/sports` | Public | Liste des sports |
-| `GET` | `/api/complexes` | Public | Catalogue ; filtres facultatifs `region`, `sport`, `capacity`, `checkIn`, `checkOut` |
-| `GET` | `/api/complexes/:id` | Public | Détails d'un complexe, infrastructures, dortoirs et repas |
-| `GET` | `/api/complexes/:id/availability` | Public | Vérifie `checkIn`, `checkOut`, `groupSize` et `facilityIds` (liste d'UUID séparés par des virgules) |
-
-Une disponibilité retournée par cette route est indicative : elle est toujours revérifiée dans la transaction de création de réservation.
-
-## Authentification et réservations client
+## Catalogue public
 
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
-| `GET` | `/api/auth/me` | Public | Compte de la session, ou `null` |
-| `POST` | `/api/auth/register` | Public | Crée uniquement un compte client |
-| `POST` | `/api/auth/login` | Public | Ouvre une session |
+| `GET` | `/health` | Public | État de l'API et de PostgreSQL |
+| `GET` | `/api/camp-sessions` | Public | Départs ouverts dont la date de début n'est pas passée, avec jauge et places restantes |
+
+Une session expose `season` (`summer` ou `winter`), `ageGroup` (`little`, `middle`, `teen`, `adult`), `startDate`, `endDate`, `durationDays`, `activities`, `capacity`, `reservedPlaces` et `remainingPlaces`. Les activités sont saisies par l'organisateur. Le catalogue n'expose aucune donnée de participant. Le séjour entier doit respecter les dates inclusives : été du 10 mai au 30 septembre, hiver du 15 décembre au 31 mars (sur un même cycle d'hiver). Le 30 septembre est la limite d'été, car le 31 septembre n'existe pas. Ces fenêtres sont vérifiées par l'API et par une contrainte PostgreSQL.
+
+## Authentification
+
+| Méthode | Route | Accès | Description |
+|---|---|---|---|
+| `GET` | `/api/auth/me` | Public | Compte de la session ou `null` |
+| `POST` | `/api/auth/register` | Public | Crée un compte client et ouvre sa session |
+| `POST` | `/api/auth/login` | Public | Vérifie les identifiants et ouvre une session |
 | `POST` | `/api/auth/logout` | Session | Ferme la session |
-| `POST` | `/api/bookings` | Client | Crée une demande en attente après vérification atomique des ressources |
-| `GET` | `/api/bookings/mine` | Client | Liste les demandes du client connecté |
 
-Exemple de corps pour créer une demande :
+Les rôles sont `customer` et `admin`. L'inscription publique ne permet pas de choisir le rôle administrateur.
+
+## Inscription et suivi client
+
+| Méthode | Route | Accès | Description |
+|---|---|---|---|
+| `POST` | `/api/camp-sessions/:id/enrollments` | Client | Inscrit de 1 à 20 participants à un départ publié |
+| `GET` | `/api/camp-enrollments/mine` | Client | Retourne uniquement les inscriptions du client connecté |
+
+Exemple de demande :
 
 ```json
 {
-  "complexId": "UUID",
-  "checkIn": "2030-06-10",
-  "checkOut": "2030-06-13",
-  "groupSize": 12,
-  "groupType": "Association",
-  "facilityIds": ["UUID"],
-  "dormitories": [{ "dormitoryId": "UUID", "bedsReserved": 12 }],
-  "mealOptionId": null
+  "healthDataConsent": true,
+  "participants": [
+    {
+      "firstName": "Lou",
+      "lastName": "Martin",
+      "birthDate": "2020-06-01",
+      "dietaryRestrictions": "Allergie aux noix",
+      "medicalInstructions": "Consigne utile à l'encadrement",
+      "specialRequests": "Son frère participe aussi"
+    }
+  ]
 }
 ```
 
-## Gestionnaire
+Le consentement doit être `true` et son horodatage/version sont enregistrés. Les champs alimentaires, médicaux et les demandes particulières sont chiffrés AES-256-GCM avant insertion. Seul le client propriétaire et l'administrateur peuvent les consulter via leurs routes authentifiées.
 
-Le gestionnaire ne peut accéder qu'aux complexes qui lui sont assignés.
+Ces données privées sont conservées jusqu'à la date de fin du séjour incluse. Après cette date, l'API ne les renvoie plus et les efface de la base au démarrage puis toutes les 15 minutes. L'effacement du champ chiffré retire aussi les demandes particulières, car elles partagent ce champ ; l'identité, la date de naissance et l'historique de l'inscription ne sont pas supprimés par ce traitement.
 
-| Méthode | Route | Description |
-|---|---|---|
-| `GET` | `/api/manager/complexes` | Complexes assignés |
-| `GET` | `/api/manager/bookings` | Demandes liées aux complexes accessibles |
-| `PATCH` | `/api/manager/bookings/:id` | Confirmer ou annuler une demande en attente |
-| `POST` | `/api/manager/complexes/:complexId/facilities` | Ajouter une infrastructure |
-| `PATCH` | `/api/manager/facilities/:id` | Modifier ou désactiver une infrastructure |
-| `POST` | `/api/manager/complexes/:complexId/dormitories` | Ajouter un dortoir |
-| `PATCH` | `/api/manager/dormitories/:id` | Modifier ou désactiver un dortoir |
-| `POST` | `/api/manager/complexes/:complexId/meals` | Ajouter une option repas |
-| `PATCH` | `/api/manager/meals/:id` | Modifier ou désactiver une option repas |
+La demande est atomique : une transaction crée l'inscription et tous ses participants. Si le départ est fermé, si les places manquent ou si un participant est invalide, aucune inscription partielle n'est conservée. Les inscriptions `pending` et `confirmed` consomment des places. L'insertion incrémente un compteur sous verrou PostgreSQL et un trigger refuse toute place au-delà de 20. L'annulation libère les places dans la même transaction que le changement d'état.
 
-Pour traiter une demande, le corps de `PATCH /api/manager/bookings/:id` contient `{"status":"confirmed"}` ou `{"status":"cancelled"}` ; `managerNote` est facultatif.
+## Administration organisateur
 
-## Administration
+Toutes les routes de ce tableau nécessitent le rôle `admin`.
 
 | Méthode | Route | Description |
 |---|---|---|
-| `GET` | `/api/admin/users` | Liste des comptes et complexes assignés |
-| `POST` | `/api/admin/complexes` | Crée un complexe, en brouillon par défaut |
-| `PATCH` | `/api/admin/complexes/:id` | Modifie un complexe ; sa publication exige un gestionnaire, une infrastructure et un dortoir |
-| `POST` | `/api/admin/managers` | Crée un compte gestionnaire et l'assigne à un complexe non assigné |
+| `GET` | `/api/admin/camp-sessions` | Liste tous les départs configurés |
+| `POST` | `/api/admin/camp-sessions` | Crée un départ ; la durée et la date de fin sont calculées selon le groupe |
+| `PATCH` | `/api/admin/camp-sessions/:id` | Modifie le départ ou ouvre/ferme les inscriptions |
+| `GET` | `/api/admin/camp-enrollments` | Liste les demandes et les informations privées des participants |
+| `PATCH` | `/api/admin/camp-enrollments/:id` | Confirme ou annule une demande en attente |
 
-Le compte administrateur initial est créé avec `npm run admin:create` à partir de variables `ADMIN_EMAIL`, `ADMIN_PASSWORD` et `ADMIN_FULL_NAME`.
+Exemple de création d'un départ :
+
+```json
+{
+  "season": "summer",
+  "ageGroup": "little",
+  "title": "Séjour d'été — Les Petits",
+  "description": "Description réelle du départ.",
+  "activities": "Activités réelles prévues pour ce départ.",
+  "startDate": "2030-07-10",
+  "registrationOpen": true
+}
+```
+
+La durée est fixée côté serveur : 4 jours pour `little`, 7 jours pour les autres groupes. Les dates de début et de fin sont inclusives. La capacité est toujours 20, elle ne peut pas être modifiée par la requête.
+
+Exemple de traitement :
+
+```json
+{ "status": "confirmed", "adminNote": "Inscription validée." }
+```
+
+Seules les demandes `pending` peuvent être traitées ; les statuts finaux sont `confirmed` ou `cancelled`. L'identifiant de l'administrateur et l'heure du traitement sont conservés. Une fois une inscription créée, la saison, les dates et le groupe du départ ne peuvent plus changer.
+
+## Erreurs courantes
+
+- `400 VALIDATION_ERROR` : champ absent, date invalide ou consentement manquant.
+- `401 UNAUTHORIZED` : une session client est requise.
+- `403 FORBIDDEN` : rôle insuffisant.
+- `404 NOT_FOUND` : départ ou inscription introuvable.
+- `409 REQUEST_ERROR` : inscription fermée, places insuffisantes ou état non modifiable.
+
+## Compatibilité avec l'ancienne version
+
+Les tables et routes de réservation de complexes de la version précédente restent dans le dépôt pour préserver les migrations et données historiques. L'interface Alpes Camp ne les utilise pas ; les nouvelles inscriptions passent par les routes `/api/camp-*`.
