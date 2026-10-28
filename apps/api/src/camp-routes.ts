@@ -5,6 +5,7 @@ import { pool } from "./db/pool.js";
 import { HttpError } from "./errors.js";
 import { requireRole } from "./middleware/auth.js";
 import {
+  ageOnDate,
   campEnrollmentSchema,
   createCampSessionSchema,
   currentDateInParis,
@@ -41,12 +42,6 @@ function dateOnly(value: string | Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function ageOnDate(birthDate: string, date: string) {
-  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
-  const [year, month, day] = date.split("-").map(Number);
-  return year! - birthYear! - (month! < birthMonth! || (month === birthMonth && day! < birthDay!) ? 1 : 0);
 }
 
 function presentParticipant(row: {
@@ -174,6 +169,9 @@ router.post("/api/camp-sessions/:id/enrollments", requireRole("customer"), enrol
     }
     if (input.participants.length > campSession.remaining_places) {
       throw new HttpError(409, `Il ne reste que ${campSession.remaining_places} place(s) pour ce départ.`);
+    }
+    if (input.participants.some((participant) => ageOnDate(participant.birthDate, startDate) < 5)) {
+      throw new HttpError(400, "Chaque participant doit avoir au moins 5 ans au début du séjour.");
     }
 
     const enrollmentResult = await client.query<{ id: string }>(

@@ -16,6 +16,12 @@ export function currentDateInParis() {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
+export function ageOnDate(birthDate: string, date: string) {
+  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
+  const [year, month, day] = date.split("-").map(Number);
+  return year! - birthYear! - (month! < birthMonth! || (month === birthMonth && day! < birthDay!) ? 1 : 0);
+}
+
 function isValidDate(value: string) {
   const timestamp = Date.parse(`${value}T00:00:00Z`);
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value;

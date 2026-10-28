@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campEnrollmentSchema, createCampSessionSchema } from "./camp-validation.js";
+import { ageOnDate, campEnrollmentSchema, createCampSessionSchema } from "./camp-validation.js";
 
 describe("validation des colonies", () => {
   it("n'accepte que les dates réelles pour créer un départ", () => {
@@ -52,5 +52,12 @@ describe("validation des colonies", () => {
       healthDataConsent: true,
       participants: Array.from({ length: 21 }, () => participant),
     }).success).toBe(false);
+  });
+
+  it("calcule l'âge au début du séjour pour imposer le minimum de 5 ans", () => {
+    expect(ageOnDate("2021-07-10", "2026-07-10")).toBe(5);
+    expect(ageOnDate("2021-07-11", "2026-07-10")).toBe(4);
+    expect(ageOnDate("2020-02-29", "2025-02-28")).toBe(4);
+    expect(ageOnDate("2020-02-29", "2025-03-01")).toBe(5);
   });
 });

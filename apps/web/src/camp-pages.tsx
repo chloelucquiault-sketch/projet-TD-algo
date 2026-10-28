@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, formatDate } from "./api";
+import { api, ApiRequestError, formatDate } from "./api";
 
 type User = { id: string; email: string; fullName: string; role: "customer" | "admin" };
 type AgeGroup = "little" | "middle" | "teen" | "adult";
@@ -241,6 +241,14 @@ function useAuth() {
 function safeReturnPath(value: string | null, fallback: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
   return value;
+}
+
+function minimumBirthDateForAge(startDate: string, age: number) {
+  const [year, month, day] = startDate.split("-").map(Number);
+  const birthYear = year! - age;
+  const lastDayOfMonth = new Date(Date.UTC(birthYear, month!, 0)).getUTCDate();
+  const birthDay = Math.min(day!, lastDayOfMonth);
+  return `${birthYear}-${String(month).padStart(2, "0")}-${String(birthDay).padStart(2, "0")}`;
 }
 
 function AuthProvider({ children }: { children: ReactNode }) {
@@ -688,7 +696,7 @@ const emptyParticipant = (): Participant => ({
 
 function EnrollmentPage() {
   const { id = "" } = useParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user, setUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<CampSession[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([emptyParticipant()]);
@@ -719,6 +727,11 @@ function EnrollmentPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const minimumBirthDate = minimumBirthDateForAge(campSession!.startDate, 5);
+    if (participants.some((participant) => participant.birthDate > minimumBirthDate)) {
+      setError("Chaque participant doit avoir au moins 5 ans au début du séjour.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -728,6 +741,11 @@ function EnrollmentPage() {
       });
       navigate("/mes-inscriptions?envoyee=oui");
     } catch (reason) {
+      if (reason instanceof ApiRequestError && reason.status === 401) {
+        setUser(null);
+        navigate(`/connexion?retour=${encodeURIComponent(`/colonies/${id}/inscription`)}`, { replace: true });
+        return;
+      }
       setError(reason instanceof Error ? reason.message : "L'inscription n'a pas pu être envoyée.");
     } finally {
       setBusy(false);
@@ -752,7 +770,7 @@ function EnrollmentPage() {
                 <div className="camp-input-grid">
                   <label>Prénom<input required maxLength={80} value={participant.firstName} onChange={(event) => updateParticipant(index, "firstName", event.target.value)} /></label>
                   <label>Nom<input required maxLength={80} value={participant.lastName} onChange={(event) => updateParticipant(index, "lastName", event.target.value)} /></label>
-                  <label>Date de naissance<input type="date" required value={participant.birthDate} onChange={(event) => updateParticipant(index, "birthDate", event.target.value)} /></label>
+                  <label>Date de naissance<input type="date" required max={minimumBirthDateForAge(campSession.startDate, 5)} value={participant.birthDate} onChange={(event) => updateParticipant(index, "birthDate", event.target.value)} /></label>
                 </div>
                 <label>Allergies ou restrictions alimentaires<textarea maxLength={2000} value={participant.dietaryRestrictions} onChange={(event) => updateParticipant(index, "dietaryRestrictions", event.target.value)} /></label>
                 <label>Consignes de santé ou traitement utile à l'encadrement<textarea maxLength={2000} value={participant.medicalInstructions} onChange={(event) => updateParticipant(index, "medicalInstructions", event.target.value)} /></label>
@@ -776,7 +794,7 @@ function EnrollmentPage() {
           <span className="camp-eyebrow">À RETENIR</span>
           <h2>Votre demande sera en attente.</h2>
           <p>Les places sont bloquées pendant le traitement. L'organisateur vous informera de la confirmation ou du refus.</p>
-          <p>L'âge indiqué est un repère. Une demande hors tranche recommandée sera signalée à l'organisateur pour échange.</p>
+          <p>Chaque participant doit avoir au moins 5 ans au début du séjour. L'âge recommandé reste indicatif ; une demande hors tranche sera signalée à l'organisateur.</p>
           <p><strong>Aucun paiement n'est demandé en ligne.</strong></p>
         </aside>
       </div>

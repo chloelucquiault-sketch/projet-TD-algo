@@ -26,7 +26,7 @@ const campSession = {
   remainingPlaces: 18,
 };
 
-function mockApi(signedIn = false, role: "customer" | "admin" = "customer") {
+function mockApi(signedIn = false, role: "customer" | "admin" = "customer", expireOnEnrollment = false) {
   let authenticated = signedIn;
   const signedInUser = { ...customer, role };
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -39,8 +39,13 @@ function mockApi(signedIn = false, role: "customer" | "admin" = "customer") {
       body = { user: signedInUser };
     } else if (path === "/api/camp-sessions") body = { sessions: [campSession] };
     else if (path === `/api/camp-sessions/${sessionId}/enrollments` && init?.method === "POST") {
-      body = { enrollment: { id: "enrollment-id", status: "pending" } };
-      status = 201;
+      if (expireOnEnrollment) {
+        body = { error: { message: "Connecte-toi pour accéder à cette page." } };
+        status = 401;
+      } else {
+        body = { enrollment: { id: "enrollment-id", status: "pending" } };
+        status = 201;
+      }
     } else if (path === "/api/camp-enrollments/mine") body = { enrollments: [] };
     else {
       body = { error: { message: "Route de test inconnue." } };
@@ -142,5 +147,41 @@ describe("application Alpes Camp", () => {
         participants: [{ firstName: "Lou", lastName: "Martin", birthDate: "2020-06-01" }],
       });
     });
+  });
+
+  it("renvoie vers la connexion si la session expire lors de l'envoi", async () => {
+    mockApi(false, "customer", true);
+    window.history.replaceState({}, "", `/colonies/${sessionId}/inscription`);
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    fireEvent.change(await screen.findByLabelText("Adresse e-mail"), { target: { value: customer.email } });
+    fireEvent.change(screen.getByLabelText("Mot de passe"), { target: { value: "mot-de-passe-test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+    await screen.findByRole("heading", { name: "Colonie des Petits" });
+
+    fireEvent.change(screen.getByLabelText("Prénom"), { target: { value: "Lou" } });
+    fireEvent.change(screen.getByLabelText("Nom"), { target: { value: "Martin" } });
+    fireEvent.change(screen.getByLabelText("Date de naissance"), { target: { value: "2020-06-01" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer la demande d'inscription" }));
+
+    expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("retour")).toBe(`/colonies/${sessionId}/inscription`);
+  });
+
+  it("refuse un participant qui aura moins de 5 ans au début du séjour", async () => {
+    mockApi(true);
+    window.history.replaceState({}, "", `/colonies/${sessionId}/inscription`);
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    await screen.findByRole("heading", { name: "Colonie des Petits" });
+    fireEvent.change(screen.getByLabelText("Prénom"), { target: { value: "Lou" } });
+    fireEvent.change(screen.getByLabelText("Nom"), { target: { value: "Martin" } });
+    fireEvent.change(screen.getByLabelText("Date de naissance"), { target: { value: "2026-07-11" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.submit(document.querySelector(".camp-enrollment-form")!);
+
+    expect(await screen.findByText("Chaque participant doit avoir au moins 5 ans au début du séjour.")).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith("/enrollments"))).toBe(false);
   });
 });

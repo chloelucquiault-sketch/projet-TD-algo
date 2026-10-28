@@ -401,6 +401,16 @@ suite("API de réservation avec PostgreSQL", () => {
       headers: { "content-type": "application/json", cookie: registeredCookie },
       body: JSON.stringify(enrollmentBody),
     });
+    const underageEnrollment = await fetch(`${baseUrl}/api/camp-sessions/${campSessionId}/enrollments`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: registeredCookie },
+      body: JSON.stringify({
+        ...enrollmentBody,
+        participants: [{ ...enrollmentBody.participants[0], birthDate: "2026-07-11" }],
+      }),
+    });
+    expect(underageEnrollment.status).toBe(400);
+
     const [first, second] = await Promise.all([createEnrollment(), createEnrollment()]);
     expect([first.status, second.status].sort()).toEqual([201, 409]);
     const successfulResponse = first.status === 201 ? first : second;

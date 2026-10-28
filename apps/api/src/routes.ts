@@ -103,7 +103,9 @@ router.post("/api/auth/logout", requireAuth, (request, response, next) => {
       next(error);
       return;
     }
-    response.clearCookie("sid");
+    response.clearCookie(process.env.SESSION_COOKIE_NAME ?? "sid", {
+      path: process.env.COOKIE_PATH ?? "/",
+    });
     response.status(204).end();
   });
 });
