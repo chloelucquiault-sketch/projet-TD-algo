@@ -9,11 +9,29 @@ Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
 | Groupe | Âge recommandé | Durée |
 |---|---:|---:|
 | Les Petits | 5–7 ans | 4 jours |
-| Les Moyens | 8–11 ans | 7 jours |
+| Les Moyens | 7–12 ans | 7 jours |
 | Les Ados | 12–14 ans | 7 jours |
 | Adultes & Confirmés | 15 ans et plus | 7 jours |
 
 Chaque départ créé par l'organisateur est limité à **20 participants**. Aucune date, activité ou information de lieu n'est préchargée ou inventée : les départs ne deviennent visibles que lorsqu'ils sont configurés et publiés.
+
+Les fiches de séjour présentent des idées d'activités outdoor et nature. Elles sont indicatives : les activités réellement prévues, les dates et les places restantes sont affichées pour chaque départ publié par l'organisateur. Les activités sportives techniques dépendent d'un encadrement adapté et des conditions du séjour.
+
+Chaque fiche de tranche d'âge comprend une galerie de photos illustrant les activités, avec des textes alternatifs et les crédits/licences associés. Ces photos sont illustratives et ne représentent pas nécessairement le lieu exact d'un séjour.
+
+### Crédits des photos d'activités
+
+| Fichier | Crédit et licence | Source |
+|---|---|---|
+| `kids-nature-camp.jpg` | Alessandro Pucci · CC BY 2.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Children_at_a_World_Wildlife_Fund_for_Nature_camp_in_Tuscany,_Italy_-_20060615.jpg) |
+| `camp-youth-crossing.jpg` | BLM Nevada · domaine public | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Tyrolean_River_Crossing_-_Youth_Camp_(22401946642).jpg) |
+| `alpine-ibex.jpg` | SimonaINM · CC BY-SA 4.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Stambecchi_Indren.jpg) |
+| `alpine-shepherd.jpg` | Wowan1978 · CC BY-SA 4.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:A_shepherd_and_a_flock_of_sheep_on_the_Gegham_Ridge_in_Armenia.jpg) |
+| `child-rock-climbing.jpg` | U.S. Navy · domaine public | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:US_Navy_090403-N-9860Y-003_Lt._Cmdr._Brian_Danielson,_assigned_to_Electronic_Attack_Squadron_(VAQ)_129,_gives_his_daughter_pointers_as_she_attempts_to_climb_the_rock_wall_during_Northwest_Outdoor_Adventure_Day.jpg) |
+| `mountain-bike-downhill.jpg` | Stickansol · CC BY-SA 4.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Mountain_bike_downhill_01.jpg) |
+| `mountain-trail-cleanup.jpg` | blmcalifornia · domaine public | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:-NPLD_2016-_Bald_Mountain_Trails_%2B_Clean-up_(29658212980).jpg) |
+| `alpine-climbing.jpg` | AmandineM · CC BY 3.0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Alpine_Climbing_Kyrgyzstan.jpg) |
+| `alpine-flowers.jpg` | Alpsdake · CC0 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Montage_of_Shirouma_mountains_alpine_plant_belt.jpg) |
 
 ## Calendrier des saisons
 
@@ -27,9 +45,12 @@ Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **
 ## Fonctionnalités
 
 - Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
+- Fiche détaillée pour chaque groupe d'âge, accessible depuis sa carte, avec son thème, les activités de découverte et les départs ouverts à la réservation.
+- Accès direct à l'espace organisateur depuis le bouton de l'en-tête, réservé au compte administrateur.
+- Affichage du nombre de places restantes pour chaque départ ; la réservation est proposée uniquement lorsqu'il reste des places.
 - Jauge publique actualisée toutes les 15 secondes ; la disponibilité est toujours revérifiée au moment de l'inscription.
 - Inscription réservée aux comptes connectés, avec un formulaire permettant d'inscrire une fratrie.
-- Informations de naissance et consignes pratiques ; les informations de santé et les notes privées sont chiffrées en base.
+- Informations de naissance et consignes pratiques ; les données de santé sont chiffrées en mode normal et non chiffrées dans la démonstration fictive.
 - Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
 - Espace client pour consulter uniquement ses propres inscriptions et leurs détails.
 - Espace organisateur protégé pour créer et publier les départs, voir les inscriptions et les confirmer ou annuler.
@@ -48,13 +69,15 @@ Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **
 
 ## Données de santé et confidentialité
 
-Les consignes alimentaires, informations médicales et demandes particulières sont chiffrées avec AES-256-GCM avant leur enregistrement. La clé `HEALTH_DATA_ENCRYPTION_KEY` est distincte du secret de session, n'est jamais stockée dans la base et doit être sauvegardée de manière sécurisée : sans cette clé, les champs privés déjà enregistrés ne pourront plus être déchiffrés. Elle ne doit jamais être commise ni partagée.
+En mode normal, les consignes alimentaires, informations médicales et demandes particulières sont chiffrées avec AES-256-GCM avant leur enregistrement. La clé `HEALTH_DATA_ENCRYPTION_KEY` est distincte du secret de session, n'est jamais stockée dans la base et doit être sauvegardée de manière sécurisée : sans cette clé, les champs privés déjà enregistrés ne pourront plus être déchiffrés. Elle ne doit jamais être commise ni partagée.
+
+L'image de démonstration du cours active explicitement `DEMO_MODE=true` : les champs de santé y sont enregistrés sans chiffrement et la session est perdue au redémarrage du conteneur si aucun `SESSION_SECRET` stable n'est configuré. Le formulaire avertit les visiteurs de n'utiliser que des informations fictives. Ne déploie pas cette configuration pour un service réel ni pour y saisir des informations personnelles ou médicales.
 
 Les données privées sont renvoyées uniquement au compte client propriétaire et à l'administrateur. Le catalogue public ne reçoit aucune donnée de participant. Le consentement explicite est enregistré avec son horodatage et sa version.
 
-Les informations médicales, restrictions alimentaires et demandes particulières chiffrées sont conservées jusqu'à la fin du séjour (date de fin incluse), puis effacées automatiquement par l'API au démarrage et toutes les 15 minutes. Après la date de fin, elles ne sont plus renvoyées par les routes, même avant l'effacement en base. Si l'API est arrêtée à ce moment-là, l'effacement est effectué à son prochain démarrage. Comme ces informations sont regroupées dans un seul champ chiffré, l'effacement retire également les demandes particulières qui y sont stockées. Les autres données d'inscription (identité, date de naissance, consentement et historique) ne sont pas supprimées par ce mécanisme et nécessitent une politique de conservation distincte.
+Les informations médicales, restrictions alimentaires et demandes particulières sont conservées jusqu'à la fin du séjour (date de fin incluse), puis effacées automatiquement par l'API au démarrage et toutes les 15 minutes. Après la date de fin, elles ne sont plus renvoyées par les routes, même avant l'effacement en base. Si l'API est arrêtée à ce moment-là, l'effacement est effectué à son prochain démarrage. Comme ces informations sont regroupées dans un seul champ de données privées, l'effacement retire également les demandes particulières qui y sont stockées. Les autres données d'inscription (identité, date de naissance, consentement et historique) ne sont pas supprimées par ce mécanisme et nécessitent une politique de conservation distincte.
 
-La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalités de consentement du représentant légal et l'information des familles restent à définir avant une mise en production. La case de consentement et le chiffrement technique ne remplacent pas une validation juridique.
+La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalités de consentement du représentant légal et l'information des familles restent à définir avant une mise en production. La case de consentement et, en mode normal, le chiffrement technique ne remplacent pas une validation juridique.
 
 ## Stack et organisation
 
@@ -152,11 +175,20 @@ Les variables sont documentées dans `.env.example` :
 - `DATABASE_URL` : chaîne de connexion PostgreSQL.
 - `SESSION_SECRET` : secret de session d'au moins 32 caractères.
 - `HEALTH_DATA_ENCRYPTION_KEY` : clé AES-256 de 32 octets représentée par 64 caractères hexadécimaux.
-- `API_PORT` : port Express (par défaut `3001`).
+- `DEMO_MODE` : active uniquement pour la démo ; les champs de santé ne sont alors pas chiffrés.
+- `PORT` ou `API_PORT` : port Express (par défaut local `3001`, port imposé par la plateforme `3000`).
 - `WEB_ORIGIN` : origine web autorisée pour les requêtes de modification (par défaut `http://localhost:5173`).
 - `COOKIE_SECURE` : force l'attribut `Secure` des cookies lorsque nécessaire.
 
 En production, configure HTTPS, des cookies sécurisés, des secrets gérés hors du dépôt, une base PostgreSQL dédiée, des sauvegardes chiffrées et une politique de conservation avant de recueillir des données personnelles.
+
+## Déploiement de démonstration IHME
+
+Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. La route `GET /api/health` vérifie la connexion à la base sans exposer de détail confidentiel.
+
+Le workflow `.github/workflows/publish.yml` publie `ghcr.io/chloelucquiault-sketch/projet-td-algo` à chaque push sur `main`. Dans **Settings → Secrets and variables → Actions**, configure `IHME_DEPLOY_TOKEN` comme secret, et `IHME_DEPLOY_URL` ainsi que `IHME_BASE_PATH=/projet-td-algo/` comme variables. Ensuite, lance le workflow **Construire et publier l’image**, coche **Déployer cette version après construction** et vérifie son résultat dans Actions.
+
+Ce déploiement est réservé à une démonstration avec des données entièrement fictives. Les informations saisies en mode démo ne sont pas chiffrées.
 
 ## Tests et build
 
@@ -182,4 +214,4 @@ Le test PostgreSQL est ignoré lorsque `TEST_DATABASE_URL` n'est pas défini. Ne
 
 ## API
 
-Les routes de catalogue, d'inscription, d'authentification et d'administration sont documentées dans [docs/API.md](./docs/API.md). L'API documente également `GET /health`.
+Les routes de catalogue, d'inscription, d'authentification et d'administration sont documentées dans [docs/API.md](./docs/API.md). L'API documente également `GET /api/health`.

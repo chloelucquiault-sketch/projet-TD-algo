@@ -6,6 +6,10 @@ export interface ParticipantPrivateData {
   specialRequests: string;
 }
 
+function demoMode() {
+  return process.env.DEMO_MODE === "true";
+}
+
 function encryptionKey() {
   const value = process.env.HEALTH_DATA_ENCRYPTION_KEY;
   if (!value || !/^[0-9a-f]{64}$/i.test(value)) {
@@ -15,10 +19,11 @@ function encryptionKey() {
 }
 
 export function assertHealthDataEncryptionKey() {
-  encryptionKey();
+  if (!demoMode()) encryptionKey();
 }
 
 export function encryptParticipantPrivateData(data: ParticipantPrivateData) {
+  if (demoMode()) return `demo:${JSON.stringify(data)}`;
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
   const encrypted = Buffer.concat([
@@ -31,6 +36,10 @@ export function encryptParticipantPrivateData(data: ParticipantPrivateData) {
 export function decryptParticipantPrivateData(value: string | null): ParticipantPrivateData {
   if (!value) {
     return { dietaryRestrictions: "", medicalInstructions: "", specialRequests: "" };
+  }
+  if (value.startsWith("demo:")) {
+    if (!demoMode()) throw new Error("Les données de démonstration ne sont lisibles qu'en mode démo.");
+    return JSON.parse(value.slice("demo:".length)) as ParticipantPrivateData;
   }
   const [ivValue, tagValue, encryptedValue] = value.split(".");
   if (!ivValue || !tagValue || !encryptedValue) {

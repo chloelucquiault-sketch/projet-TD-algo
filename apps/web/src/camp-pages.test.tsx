@@ -26,16 +26,17 @@ const campSession = {
   remainingPlaces: 18,
 };
 
-function mockApi(signedIn = false) {
+function mockApi(signedIn = false, role: "customer" | "admin" = "customer") {
   let authenticated = signedIn;
+  const signedInUser = { ...customer, role };
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
     let body: unknown;
     let status = 200;
-    if (path === "/api/auth/me") body = { user: authenticated ? customer : null };
+    if (path === "/api/auth/me") body = { user: authenticated ? signedInUser : null };
     else if (path === "/api/auth/login" && init?.method === "POST") {
       authenticated = true;
-      body = { user: customer };
+      body = { user: signedInUser };
     } else if (path === "/api/camp-sessions") body = { sessions: [campSession] };
     else if (path === `/api/camp-sessions/${sessionId}/enrollments` && init?.method === "POST") {
       body = { enrollment: { id: "enrollment-id", status: "pending" } };
@@ -69,7 +70,50 @@ describe("application Alpes Camp", () => {
     expect(document.querySelector(".camp-hero-stamp")).toBeNull();
     expect(screen.queryByText("20 places maximum par départ")).toBeNull();
     expect(await screen.findByText("Colonie des Petits")).toBeTruthy();
+    expect(screen.getByText("18 place(s) restante(s) sur 20")).toBeTruthy();
     expect(screen.queryByText("Domaine des Cèdres")).toBeNull();
+  });
+
+  it("ouvre la fiche du séjour depuis sa catégorie et montre les places restantes avant réservation", async () => {
+    mockApi();
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+    await screen.findByText("Colonie des Petits");
+    fireEvent.click(screen.getByRole("link", { name: "Découvrir le séjour Les Petits" }));
+
+    expect(await screen.findByRole("heading", { name: "Les Petits" })).toBeTruthy();
+    expect(screen.getByText("« Premiers pas éco-aventuriers »")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Randonnées ludiques contées" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Petits gardiens de la montagne" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Un groupe de bouquetins évolue sur une crête rocheuse des Alpes." })).toBeTruthy();
+    expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
+    expect(screen.getAllByText("18 place(s) restante(s) sur 20")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("link", { name: "Réserver" }));
+    expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
+  });
+
+  it.each([
+    ["little", "Les Petits"],
+    ["middle", "Les Moyens"],
+    ["teen", "Les Ados"],
+    ["adult", "Adultes & Confirmés"],
+  ] as const)("illustre les activités de la fiche %s avec des photos créditées", async (ageGroup, title) => {
+    mockApi();
+    window.history.replaceState({}, "", `/sejours/${ageGroup}`);
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByRole("heading", { name: title })).toBeTruthy();
+    const images = document.querySelectorAll(".camp-activity-photo img");
+    expect(images).toHaveLength(3);
+    expect([...images].every((image) => image.getAttribute("alt"))).toBe(true);
+    expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
+  });
+
+  it("affiche un bouton organisateur dans l'en-tête du compte administrateur", async () => {
+    mockApi(true, "admin");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    const organizerLink = await screen.findByRole("link", { name: "Espace organisateur" });
+    expect(organizerLink.getAttribute("href")).toBe("/organisateur");
   });
 
   it("impose la connexion puis transmet une inscription avec consentement", async () => {

@@ -18,7 +18,7 @@ const idSchema = z.string().uuid();
 const daysByAgeGroup = { little: 4, middle: 7, teen: 7, adult: 7 } as const;
 const recommendedAgeRanges = {
   little: [5, 7],
-  middle: [8, 11],
+  middle: [7, 12],
   teen: [12, 14],
   adult: [15, Number.POSITIVE_INFINITY],
 } as const;

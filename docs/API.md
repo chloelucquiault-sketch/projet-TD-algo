@@ -6,7 +6,7 @@ Base locale : `http://localhost:3001`. Les erreurs suivent la forme `{ "error": 
 
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
-| `GET` | `/health` | Public | État de l'API et de PostgreSQL |
+| `GET` | `/api/health` | Public | État de l'API et vérification de PostgreSQL |
 | `GET` | `/api/camp-sessions` | Public | Départs ouverts dont la date de début n'est pas passée, avec jauge et places restantes |
 
 Une session expose `season` (`summer` ou `winter`), `ageGroup` (`little`, `middle`, `teen`, `adult`), `startDate`, `endDate`, `durationDays`, `activities`, `capacity`, `reservedPlaces` et `remainingPlaces`. Les activités sont saisies par l'organisateur. Le catalogue n'expose aucune donnée de participant. Le séjour entier doit respecter les dates inclusives : été du 10 mai au 30 septembre, hiver du 15 décembre au 31 mars (sur un même cycle d'hiver). Le 30 septembre est la limite d'été, car le 31 septembre n'existe pas. Ces fenêtres sont vérifiées par l'API et par une contrainte PostgreSQL.
@@ -47,9 +47,9 @@ Exemple de demande :
 }
 ```
 
-Le consentement doit être `true` et son horodatage/version sont enregistrés. Les champs alimentaires, médicaux et les demandes particulières sont chiffrés AES-256-GCM avant insertion. Seul le client propriétaire et l'administrateur peuvent les consulter via leurs routes authentifiées.
+Le consentement doit être `true` et son horodatage/version sont enregistrés. En mode normal, les champs alimentaires, médicaux et les demandes particulières sont chiffrés AES-256-GCM avant insertion. En `DEMO_MODE=true`, ils ne sont pas chiffrés : ne saisir que des données fictives. Seul le client propriétaire et l'administrateur peuvent les consulter via leurs routes authentifiées.
 
-Ces données privées sont conservées jusqu'à la date de fin du séjour incluse. Après cette date, l'API ne les renvoie plus et les efface de la base au démarrage puis toutes les 15 minutes. L'effacement du champ chiffré retire aussi les demandes particulières, car elles partagent ce champ ; l'identité, la date de naissance et l'historique de l'inscription ne sont pas supprimés par ce traitement.
+Ces données privées sont conservées jusqu'à la date de fin du séjour incluse. Après cette date, l'API ne les renvoie plus et les efface de la base au démarrage puis toutes les 15 minutes. L'effacement du champ privé retire aussi les demandes particulières, car elles partagent ce champ ; l'identité, la date de naissance et l'historique de l'inscription ne sont pas supprimés par ce traitement.
 
 La demande est atomique : une transaction crée l'inscription et tous ses participants. Si le départ est fermé, si les places manquent ou si un participant est invalide, aucune inscription partielle n'est conservée. Les inscriptions `pending` et `confirmed` consomment des places. L'insertion incrémente un compteur sous verrou PostgreSQL et un trigger refuse toute place au-delà de 20. L'annulation libère les places dans la même transaction que le changement d'état.
 

@@ -61,7 +61,7 @@ interface ApiErrorBody {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(`${import.meta.env.BASE_URL}${path.replace(/^\/+/, "")}`, {
     ...options,
     credentials: "include",
     headers: {
