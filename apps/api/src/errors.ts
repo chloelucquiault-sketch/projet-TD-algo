@@ -10,9 +10,10 @@ export class HttpError extends Error {
   }
 }
 
-function diagnosticCode(error: unknown) {
-  if (typeof error !== "object" || error === null || !("code" in error)) return "APPLICATION_ERROR";
-  return typeof error.code === "string" ? error.code : "APPLICATION_ERROR";
+function diagnosticDetails(error: unknown) {
+  if (!(error instanceof Error)) return "Erreur de type inconnu.";
+  const code = "code" in error && typeof error.code === "string" ? ` [${error.code}]` : "";
+  return `${error.name}${code}: ${error.message}`.slice(0, 240);
 }
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
@@ -45,7 +46,7 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
     error: {
       code: "INTERNAL_ERROR",
       message: "Une erreur interne est survenue.",
-      ...(process.env.DEMO_MODE === "true" ? { diagnostic: diagnosticCode(error) } : {}),
+      ...(process.env.DEMO_MODE === "true" ? { diagnostic: diagnosticDetails(error) } : {}),
     },
   });
 };
