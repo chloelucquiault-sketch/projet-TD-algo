@@ -13,9 +13,9 @@ Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
 | Les Ados | 12–14 ans | 7 jours |
 | Adultes & Confirmés | 15 ans et plus | 7 jours |
 
-Chaque départ créé par l'organisateur est limité à **20 participants**. Aucune date, activité ou information de lieu n'est préchargée ou inventée : les départs ne deviennent visibles que lorsqu'ils sont configurés et publiés.
+Chaque départ est limité à **20 participants**. Huit départs de démonstration sont préchargés et ouverts aux inscriptions ; leurs dates, descriptions et activités sont fictives et ne constituent pas une offre réelle. Aucun lieu n'est défini.
 
-Les fiches de séjour présentent des idées d'activités outdoor et nature. Elles sont indicatives : les activités réellement prévues, les dates et les places restantes sont affichées pour chaque départ publié par l'organisateur. Les activités sportives techniques dépendent d'un encadrement adapté et des conditions du séjour.
+Les fiches de séjour présentent des idées d'activités outdoor et nature. Les activités, dates et places restantes sont affichées pour chaque départ ouvert à la réservation ; celles des départs de démonstration sont fictives. Les activités sportives techniques dépendent d'un encadrement adapté et des conditions du séjour.
 
 Chaque fiche de tranche d'âge comprend une galerie de photos illustrant les activités, avec des textes alternatifs et les crédits/licences associés. Ces photos sont illustratives et ne représentent pas nécessairement le lieu exact d'un séjour.
 
@@ -42,6 +42,23 @@ Les dates de saison sont inclusives. Un séjour entier, date de fin comprise, do
 
 Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **30 septembre**. L'API valide la période et PostgreSQL la protège également par une contrainte ; un départ qui dépasse la fenêtre est refusé.
 
+### Départs de démonstration
+
+La migration `009_demo_camp_sessions.sql` ouvre les inscriptions sur huit départs préconfigurés, avec 20 places chacun. Les dates suivent les fenêtres saisonnières et les durées définies ci-dessus :
+
+| Saison | Groupe | Dates |
+|---|---|---|
+| Hiver 2026–2027 | Les Petits | 15–18 décembre 2026 |
+| Hiver 2026–2027 | Les Moyens | 10–16 janvier 2027 |
+| Hiver 2026–2027 | Les Ados | 7–13 février 2027 |
+| Hiver 2026–2027 | Adultes & Confirmés | 21–27 mars 2027 |
+| Été 2027 | Les Petits | 10–13 mai 2027 |
+| Été 2027 | Les Moyens | 20–26 juin 2027 |
+| Été 2027 | Les Ados | 18–24 juillet 2027 |
+| Été 2027 | Adultes & Confirmés | 15–21 août 2027 |
+
+Ce calendrier et les activités affichées sont fictifs, destinés à la démonstration et modifiables dans la base par l'organisateur. Ils ne garantissent pas qu'un séjour aura lieu.
+
 ## Fonctionnalités
 
 - Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
@@ -62,10 +79,10 @@ Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **
 - Une durée de **4 jours** signifie quatre dates calendaires, date de début et date de fin incluses ; une durée de **7 jours** suit la même convention. La date de fin est calculée automatiquement à partir de la date de début et du groupe.
 - La jauge de 20 est fixe par départ. Les participants de demandes **en attente et confirmées** sont comptabilisés ; l'annulation d'une demande libère ses places.
 - Les âges affichés sont des recommandations. Une inscription hors tranche est possible et signalée à l'organisateur pour discussion ; le système ne décide pas d'une dérogation.
-- Les activités et descriptions sont saisies par l'organisateur pour chaque départ ; aucun programme fictif n'est prérempli.
-- Le calendrier, le lieu précis, les activités, les prix, les paiements, les annulations côté famille, les remboursements et les règles de répartition ne sont pas inventés ou simulés.
+- Les activités et descriptions des départs réels sont saisies par l'organisateur ; les départs de démonstration utilisent des exemples fictifs.
+- Aucun calendrier ou programme réel, lieu précis, prix, paiement, annulation côté famille, remboursement ou règle de répartition n'est configuré ou simulé.
 - Aucun paiement n'est collecté.
-- Les dates de départ et les descriptions doivent être saisies par l'organisateur. Un départ ne peut plus changer de dates, saison ou groupe après la création d'une inscription.
+- Les prochains départs réels doivent être validés par l'organisateur. Un départ ne peut plus changer de dates, saison ou groupe après la création d'une inscription.
 
 ## Données de santé et confidentialité
 
@@ -186,6 +203,8 @@ En production, configure HTTPS, des cookies sécurisés, des secrets gérés hor
 ## Déploiement de démonstration IHME
 
 Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. Le proxy retire le préfixe `/projet-td-algo/` avant de transmettre les requêtes à Express : le cookie de session utilise donc le chemin `/` et un nom propre à l'application. La route `GET /api/health` vérifie PostgreSQL et la présence du schéma requis par les sessions, l'authentification et les inscriptions.
+
+La migration `009_demo_camp_sessions.sql` préconfigure et ouvre huit départs de démonstration (quatre groupes d'âge par saison) aux dates indiquées dans la section [Départs de démonstration](#départs-de-démonstration). Les dates et activités sont fictives et aucun lieu n'est défini.
 
 Le workflow `.github/workflows/publish.yml` publie `ghcr.io/chloelucquiault-sketch/projet-td-algo` à chaque push sur `main`. Dans **Settings → Secrets and variables → Actions**, configure `IHME_DEPLOY_TOKEN` comme secret, et `IHME_DEPLOY_URL` ainsi que `IHME_BASE_PATH=/projet-td-algo/` comme variables. Ensuite, lance le workflow **Construire et publier l’image**, coche **Déployer cette version après construction** et vérifie son résultat dans Actions.
 
