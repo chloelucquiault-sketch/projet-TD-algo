@@ -98,7 +98,7 @@ Seules les demandes `pending` peuvent être traitées ; les statuts finaux sont 
 - `403 FORBIDDEN` : rôle insuffisant.
 - `404 NOT_FOUND` : départ ou inscription introuvable.
 - `409 REQUEST_ERROR` : inscription fermée, places insuffisantes ou état non modifiable.
-- `500 INTERNAL_ERROR` : erreur serveur ; en mode démo, `error.diagnostic` donne un détail technique limité pour faciliter le diagnostic.
+- `500 INTERNAL_ERROR` : erreur serveur inattendue.
 
 ## Compatibilité avec l'ancienne version
 

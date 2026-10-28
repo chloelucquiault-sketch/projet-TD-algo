@@ -179,12 +179,13 @@ Les variables sont documentées dans `.env.example` :
 - `PORT` ou `API_PORT` : port Express (par défaut local `3001`, port imposé par la plateforme `3000`).
 - `WEB_ORIGIN` : origine web autorisée pour les requêtes de modification (par défaut `http://localhost:5173`).
 - `COOKIE_SECURE` : force l'attribut `Secure` des cookies lorsque nécessaire.
+- `COOKIE_PATH` et `SESSION_COOKIE_NAME` : chemin et nom du cookie de session ; derrière un proxy qui retire le préfixe public, le chemin doit rester `/`.
 
 En production, configure HTTPS, des cookies sécurisés, des secrets gérés hors du dépôt, une base PostgreSQL dédiée, des sauvegardes chiffrées et une politique de conservation avant de recueillir des données personnelles.
 
 ## Déploiement de démonstration IHME
 
-Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. La route `GET /api/health` vérifie PostgreSQL et la présence du schéma requis par les sessions, l'authentification et les inscriptions.
+Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. Le proxy retire le préfixe `/projet-td-algo/` avant de transmettre les requêtes à Express : le cookie de session utilise donc le chemin `/` et un nom propre à l'application. La route `GET /api/health` vérifie PostgreSQL et la présence du schéma requis par les sessions, l'authentification et les inscriptions.
 
 Le workflow `.github/workflows/publish.yml` publie `ghcr.io/chloelucquiault-sketch/projet-td-algo` à chaque push sur `main`. Dans **Settings → Secrets and variables → Actions**, configure `IHME_DEPLOY_TOKEN` comme secret, et `IHME_DEPLOY_URL` ainsi que `IHME_BASE_PATH=/projet-td-algo/` comme variables. Ensuite, lance le workflow **Construire et publier l’image**, coche **Déployer cette version après construction** et vérifie son résultat dans Actions.
 

@@ -5,7 +5,8 @@ import type { UserRole } from "../types.js";
 
 export async function loadUser(request: Request, _response: Response, next: NextFunction) {
   try {
-    if (!request.session.userId) {
+    const userSession = request.session;
+    if (!userSession?.userId) {
       next();
       return;
     }
@@ -16,11 +17,11 @@ export async function loadUser(request: Request, _response: Response, next: Next
       role: UserRole;
     }>(
       "SELECT id, email, full_name, role FROM users WHERE id = $1",
-      [request.session.userId],
+      [userSession.userId],
     );
     const user = result.rows[0];
     if (!user) {
-      request.session.destroy((error) => {
+      userSession.destroy((error) => {
         if (error) next(error);
         else next();
       });

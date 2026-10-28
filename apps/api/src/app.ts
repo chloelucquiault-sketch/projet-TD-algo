@@ -72,7 +72,7 @@ export function createApp() {
   });
   app.use(express.static(resolve(process.cwd(), "apps/web/dist")));
   app.use(session({
-    name: "sid",
+    name: process.env.SESSION_COOKIE_NAME ?? "sid",
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,

@@ -15,16 +15,24 @@ const statusSchema = z.object({
 
 const parseId = (value: unknown) => idSchema.parse(value);
 
+function requireSession(request: Request) {
+  if (!request.session) {
+    throw new HttpError(503, "La session est indisponible. Réessaie dans quelques instants.");
+  }
+  return request.session;
+}
+
 async function startUserSession(request: Request, userId: string) {
+  const userSession = requireSession(request);
   await new Promise<void>((resolve, reject) => {
-    request.session.regenerate((error) => {
+    userSession.regenerate((error) => {
       if (error) reject(error);
       else resolve();
     });
   });
-  request.session.userId = userId;
+  userSession.userId = userId;
   await new Promise<void>((resolve, reject) => {
-    request.session.save((error) => {
+    userSession.save((error) => {
       if (error) reject(error);
       else resolve();
     });
@@ -41,6 +49,7 @@ router.get("/api/auth/me", (request, response) => {
 });
 
 router.post("/api/auth/register", async (request, response) => {
+  requireSession(request);
   const input = registerSchema.parse(request.body);
   const passwordHash = await bcrypt.hash(input.password, 12);
   try {
@@ -63,6 +72,7 @@ router.post("/api/auth/register", async (request, response) => {
 });
 
 router.post("/api/auth/login", async (request, response) => {
+  requireSession(request);
   const input = z.object({
     email: z.string().trim().email().transform((value) => value.toLowerCase()),
     password: z.string().min(1).max(200),

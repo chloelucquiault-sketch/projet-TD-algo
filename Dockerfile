@@ -19,7 +19,7 @@ COPY apps/web/package.json apps/web/package.json
 RUN npm ci --omit=dev && npm cache clean --force
 
 FROM node:24-bookworm-slim AS runtime
-ENV NODE_ENV=production PORT=3000 DEMO_MODE=true COOKIE_PATH=/projet-td-algo/
+ENV NODE_ENV=production PORT=3000 DEMO_MODE=true COOKIE_PATH=/ SESSION_COOKIE_NAME=alpes_camp_sid
 WORKDIR /app
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node apps/api/package.json apps/api/package.json
