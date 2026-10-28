@@ -10,6 +10,11 @@ export class HttpError extends Error {
   }
 }
 
+function diagnosticCode(error: unknown) {
+  if (typeof error !== "object" || error === null || !("code" in error)) return "APPLICATION_ERROR";
+  return typeof error.code === "string" ? error.code : "APPLICATION_ERROR";
+}
+
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   if (error instanceof ZodError) {
     response.status(400).json({
@@ -37,6 +42,10 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
 
   console.error("Erreur API non gérée.", error);
   response.status(500).json({
-    error: { code: "INTERNAL_ERROR", message: "Une erreur interne est survenue." },
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Une erreur interne est survenue.",
+      ...(process.env.DEMO_MODE === "true" ? { diagnostic: diagnosticCode(error) } : {}),
+    },
   });
 };

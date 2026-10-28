@@ -49,11 +49,12 @@ export function createApp() {
                  WHERE table_schema = 'public' AND table_name = 'session'
                    AND column_name IN ('sid', 'sess', 'expire')) AS "sessionStore",
           to_regclass('public.camp_sessions') IS NOT NULL
-            AND (SELECT COUNT(*) = 11 FROM information_schema.columns
+            AND (SELECT COUNT(*) = 12 FROM information_schema.columns
                  WHERE table_schema = 'public' AND table_name = 'camp_sessions'
                    AND column_name IN (
                      'id', 'season', 'age_group', 'title', 'description', 'activities',
-                     'start_date', 'end_date', 'duration_days', 'capacity', 'reserved_places'
+                     'start_date', 'end_date', 'duration_days', 'capacity', 'reserved_places',
+                     'registration_open'
                    )) AS "campSessions",
           to_regclass('public.camp_enrollments') IS NOT NULL
             AND to_regclass('public.camp_participants') IS NOT NULL AS "campEnrollments"
