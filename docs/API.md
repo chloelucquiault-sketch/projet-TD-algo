@@ -6,10 +6,12 @@ Base locale : `http://localhost:3001`. Les erreurs suivent la forme `{ "error": 
 
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
-| `GET` | `/api/health` | Public | État de l'API et vérification de PostgreSQL |
+| `GET` | `/api/health` | Public | État de PostgreSQL et disponibilité du schéma d'authentification et des inscriptions |
 | `GET` | `/api/camp-sessions` | Public | Départs ouverts dont la date de début n'est pas passée, avec jauge et places restantes |
 
 Une session expose `season` (`summer` ou `winter`), `ageGroup` (`little`, `middle`, `teen`, `adult`), `startDate`, `endDate`, `durationDays`, `activities`, `capacity`, `reservedPlaces` et `remainingPlaces`. Les activités sont saisies par l'organisateur. Le catalogue n'expose aucune donnée de participant. Le séjour entier doit respecter les dates inclusives : été du 10 mai au 30 septembre, hiver du 15 décembre au 31 mars (sur un même cycle d'hiver). Le 30 septembre est la limite d'été, car le 31 septembre n'existe pas. Ces fenêtres sont vérifiées par l'API et par une contrainte PostgreSQL.
+
+La réponse de `/api/health` inclut les contrôles `users`, `sessionStore`, `campSessions` et `campEnrollments`. Elle renvoie `503` si PostgreSQL est accessible mais que le schéma nécessaire au tunnel n'est pas prêt.
 
 ## Authentification
 

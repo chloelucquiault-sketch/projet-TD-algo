@@ -184,7 +184,7 @@ En production, configure HTTPS, des cookies sécurisés, des secrets gérés hor
 
 ## Déploiement de démonstration IHME
 
-Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. La route `GET /api/health` vérifie la connexion à la base sans exposer de détail confidentiel.
+Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. La route `GET /api/health` vérifie PostgreSQL et la présence du schéma requis par les sessions, l'authentification et les inscriptions.
 
 Le workflow `.github/workflows/publish.yml` publie `ghcr.io/chloelucquiault-sketch/projet-td-algo` à chaque push sur `main`. Dans **Settings → Secrets and variables → Actions**, configure `IHME_DEPLOY_TOKEN` comme secret, et `IHME_DEPLOY_URL` ainsi que `IHME_BASE_PATH=/projet-td-algo/` comme variables. Ensuite, lance le workflow **Construire et publier l’image**, coche **Déployer cette version après construction** et vérifie son résultat dans Actions.
 

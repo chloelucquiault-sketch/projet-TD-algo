@@ -33,8 +33,37 @@ export function createApp() {
   app.use(express.json({ limit: "512kb" }));
   app.get("/api/health", async (_request, response) => {
     try {
-      await pool.query("SELECT 1");
-      response.json({ status: "ok" });
+      const result = await pool.query<{
+        users: boolean;
+        sessionStore: boolean;
+        campSessions: boolean;
+        campEnrollments: boolean;
+      }>(`
+        SELECT
+          to_regclass('public.users') IS NOT NULL
+            AND (SELECT COUNT(*) = 4 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'users'
+                   AND column_name IN ('id', 'email', 'full_name', 'role')) AS users,
+          to_regclass('public.session') IS NOT NULL
+            AND (SELECT COUNT(*) = 3 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'session'
+                   AND column_name IN ('sid', 'sess', 'expire')) AS "sessionStore",
+          to_regclass('public.camp_sessions') IS NOT NULL
+            AND (SELECT COUNT(*) = 11 FROM information_schema.columns
+                 WHERE table_schema = 'public' AND table_name = 'camp_sessions'
+                   AND column_name IN (
+                     'id', 'season', 'age_group', 'title', 'description', 'activities',
+                     'start_date', 'end_date', 'duration_days', 'capacity', 'reserved_places'
+                   )) AS "campSessions",
+          to_regclass('public.camp_enrollments') IS NOT NULL
+            AND to_regclass('public.camp_participants') IS NOT NULL AS "campEnrollments"
+      `);
+      const checks = result.rows[0]!;
+      const ready = Object.values(checks).every(Boolean);
+      response.status(ready ? 200 : 503).json({
+        status: ready ? "ok" : "unavailable",
+        checks,
+      });
     } catch (error) {
       console.error("La vérification de santé de l'API a échoué.", error);
       response.status(503).json({ status: "unavailable" });
