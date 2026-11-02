@@ -137,8 +137,11 @@ describe("application Alpes Camp", () => {
 
     expect(await screen.findByRole("heading", { name: "Les Petits" })).toBeTruthy();
     expect(screen.getByText("« Premiers pas éco-aventuriers »")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Randonnées ludiques contées" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "☀️ Séjours d'été" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "❄️ Séjours d'hiver" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Randonnées contées et douces" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Petits gardiens de la montagne" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Premières traces dans la neige" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "Un groupe de bouquetins évolue sur une crête rocheuse des Alpes." })).toBeTruthy();
     expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
     fireEvent.click([...document.querySelectorAll(".camp-program-season-menu summary")].find((summary) => summary.textContent?.includes("Séjours d'été"))!);
@@ -162,6 +165,23 @@ describe("application Alpes Camp", () => {
     expect(images).toHaveLength(3);
     expect([...images].every((image) => image.getAttribute("alt"))).toBe(true);
     expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
+  });
+
+  it.each([
+    ["little", "Les Petits", "Petits gardiens de la montagne", "Le manteau des animaux"],
+    ["middle", "Les Moyens", "À la rencontre d'une estive", "Atelier « Neige et climat »"],
+    ["teen", "Les Ados", "Chantier éco-citoyen", "Zones de tranquillité de la faune"],
+    ["adult", "Adultes & Confirmés", "Cartographie participative de la biodiversité", "Ski-alpinisme et sécurité"],
+  ] as const)("présente des activités distinctes par saison pour %s", async (ageGroup, title, summerActivity, winterActivity) => {
+    mockApi();
+    window.history.replaceState({}, "", `/sejours/${ageGroup}`);
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByRole("heading", { name: title })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "☀️ Séjours d'été" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "❄️ Séjours d'hiver" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: summerActivity })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: winterActivity })).toBeTruthy();
   });
 
   it("affiche un bouton organisateur dans l'en-tête du compte administrateur", async () => {

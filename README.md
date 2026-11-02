@@ -15,7 +15,7 @@ Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
 
 Chaque départ est limité à **20 participants**. Huit départs de démonstration sont préchargés et ouverts aux inscriptions ; leurs dates, descriptions et activités sont fictives et ne constituent pas une offre réelle. Aucun lieu n'est défini.
 
-Les fiches de séjour présentent des idées d'activités outdoor et nature. Les activités, dates et places restantes sont affichées pour chaque départ ouvert à la réservation ; celles des départs de démonstration sont fictives. Les activités sportives techniques dépendent d'un encadrement adapté et des conditions du séjour.
+Les fiches de séjour présentent des idées d'activités outdoor et nature distinctes pour l'été et l'hiver, adaptées aux quatre groupes d'âge. Les activités, dates et places restantes sont affichées pour chaque départ ouvert à la réservation ; celles des départs de démonstration sont fictives. Les sorties techniques, bivouacs et activités avec des mineurs nécessitent un encadrement qualifié et restent soumises à la météo, à la sécurité, au lieu et aux autorisations.
 
 Chaque fiche de tranche d'âge comprend une galerie de photos illustrant les activités, avec des textes alternatifs et les crédits/licences associés. Ces photos sont illustratives et ne représentent pas nécessairement le lieu exact d'un séjour.
 
@@ -63,6 +63,7 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 
 - Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
 - Fiche détaillée pour chaque groupe d'âge, accessible depuis sa carte, avec son thème, les activités de découverte et les départs ouverts à la réservation.
+- Activités proposées séparément pour l'été et l'hiver, avec une sélection adaptée à chaque groupe d'âge.
 - Accès direct à l'espace organisateur depuis le bouton de l'en-tête, réservé au compte administrateur.
 - La page de connexion invite à contacter l'organisateur en cas d'oubli du mot de passe ; aucun mécanisme de réinitialisation par e-mail n'est configuré.
 - Affichage du nombre de places restantes pour chaque départ ; la réservation est proposée uniquement lorsqu'il reste des places.

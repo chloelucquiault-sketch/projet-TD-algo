@@ -158,10 +158,12 @@ body { min-width: 320px; }
 .camp-activity-photo figcaption { display: grid; gap: 5px; padding: 10px 11px; }
 .camp-activity-photo figcaption > span { color: #3d5140; font-size: 11px; font-weight: 700; line-height: 1.4; }
 .camp-activity-photo figcaption > a { color: #676a5f; font-size: 9px; line-height: 1.5; text-decoration: underline; }
+.camp-season-activity-list { display: grid; gap: 22px; }
+.camp-season-activities > h3 { margin: 0 0 12px; color: #4e6848; font: 700 18px/1.35 "Manrope", sans-serif; }
 .camp-activity-list { display: grid; gap: 12px; }
 .camp-activity-card { display: grid; grid-template-columns: 35px minmax(0, 1fr); gap: 12px; padding: 19px; border: 1px solid #e4e8df; background: #fff; }
 .camp-activity-number { color: #718767; font-size: 11px; font-weight: 800; letter-spacing: 1px; }
-.camp-activity-card h3 { margin: 0 0 7px; color: #3d5140; font: 700 15px/1.4 "Manrope", sans-serif; }
+.camp-activity-card h4 { margin: 0 0 7px; color: #3d5140; font: 700 15px/1.4 "Manrope", sans-serif; }
 .camp-activity-card p, .camp-program-disclaimer { margin: 0; color: #676a5f; font-size: 12px; line-height: 1.75; }
 .camp-program-disclaimer { margin-top: 18px; }
 .camp-program-booking { position: sticky; top: 105px; padding: 23px; border: 1px solid #dce2d7; background: #f7f8f5; }

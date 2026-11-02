@@ -26,7 +26,7 @@ type CampProgram = {
   theme: string;
   description: string;
   illustrations: ActivityIllustration[];
-  activities: { title: string; details: string }[];
+  activities: Record<Season, { title: string; details: string }[]>;
 };
 type CampSession = {
   id: string;
@@ -98,12 +98,18 @@ const programs: CampProgram[] = [
         source: "https://commons.wikimedia.org/wiki/File:Stambecchi_Indren.jpg",
       },
     ],
-    activities: [
-      { title: "Randonnées ludiques contées", details: "Marcher tranquillement à la découverte de la flore alpine et observer les petites curiosités naturelles sans perturber l'écosystème." },
-      { title: "Chasse aux traces d'animaux", details: "S'initier au pistage doux et reconnaître, sur les sentiers balisés, les empreintes du chamois, du lièvre ou de la marmotte." },
-      { title: "Petits gardiens de la montagne", details: "Découvrir le tri et les éco-gestes, puis fabriquer une petite mangeoire en bois recyclé ou un abri à insectes." },
-      { title: "Contes et légendes de la montagne", details: "Partager une veillée autour des histoires alpines ; un feu de camp n'est envisagé que si le site et les conditions de sécurité l'autorisent." },
-    ],
+    activities: {
+      summer: [
+        { title: "Randonnées contées et douces", details: "S'initier à la marche en montagne lors de petites balades adaptées, observer la nature et ramasser uniquement des éléments déjà détachés, sans déranger la faune ni la flore." },
+        { title: "Chasse aux traces d'animaux", details: "Reconnaître les empreintes de chamois ou de lièvre sur des sentiers faciles, sans approcher ni suivre les animaux." },
+        { title: "Petits gardiens de la montagne", details: "Découvrir le tri des déchets et fabriquer une petite mangeoire à oiseaux avec du bois recyclé." },
+      ],
+      winter: [
+        { title: "Premières traces dans la neige", details: "Faire une très courte balade ludique en raquettes, si l'enneigement le permet, et observer les traces sans déranger les animaux." },
+        { title: "Le manteau des animaux", details: "Découvrir comment la faune alpine traverse l'hiver grâce à la fourrure, aux réserves et, pour certaines espèces, à l'hibernation." },
+        { title: "Mini-igloos écoresponsables", details: "Construire de petites formes dans la neige avec l'encadrement, sans laisser de déchets ni dégrader les milieux." },
+      ],
+    },
   },
   {
     ageGroup: "middle",
@@ -135,12 +141,18 @@ const programs: CampProgram[] = [
         source: "https://commons.wikimedia.org/wiki/File:US_Navy_090403-N-9860Y-003_Lt._Cmdr._Brian_Danielson,_assigned_to_Electronic_Attack_Squadron_(VAQ)_129,_gives_his_daughter_pointers_as_she_attempts_to_climb_the_rock_wall_during_Northwest_Outdoor_Adventure_Day.jpg",
       },
     ],
-    activities: [
-      { title: "Orientation et bivouac léger", details: "Apprendre à lire une carte, suivre les sentiers protégés et appliquer les principes du « ne laisser aucune trace »." },
-      { title: "À la rencontre des bergers", details: "Découvrir le métier de berger, les chiens de protection (patous) et la cohabitation entre élevage, loups, lynx et autres animaux sauvages." },
-      { title: "Escalade ou accrobranche", details: "Découvrir une activité verticale avec un encadrement adapté, en respectant les zones de nidification des oiseaux protégés comme l'aigle royal." },
-      { title: "Empreinte carbone et éco-gestes", details: "Comprendre par le jeu et les activités de plein air les effets du réchauffement climatique sur les glaciers alpins." },
-    ],
+    activities: {
+      summer: [
+        { title: "Orientation et bivouac léger", details: "Apprendre à lire une carte et à préparer une sortie en appliquant les principes du « ne laisser aucune trace ». Un éventuel bivouac dépend du lieu et de l'encadrement." },
+        { title: "À la rencontre d'une estive", details: "Échanger avec un berger, découvrir son métier et le rôle des chiens de protection, en respectant les consignes et les distances autour du troupeau." },
+        { title: "Escalade écoresponsable", details: "S'initier à l'escalade avec un encadrement qualifié et respecter les zones de nidification protégées, notamment celles de l'aigle royal." },
+      ],
+      winter: [
+        { title: "Raquettes et orientation hivernale", details: "Explorer la montagne en raquettes, apprendre à s'orienter et découvrir les règles de sécurité adaptées aux conditions du jour." },
+        { title: "Observer la faune aux jumelles", details: "Repérer les animaux à distance, sans les approcher ni les effrayer, afin de préserver leur tranquillité pendant l'hiver." },
+        { title: "Atelier « Neige et climat »", details: "Comprendre par le jeu l'évolution du manteau neigeux et les effets du réchauffement climatique sur la montagne." },
+      ],
+    },
   },
   {
     ageGroup: "teen",
@@ -172,12 +184,18 @@ const programs: CampProgram[] = [
         source: "https://commons.wikimedia.org/wiki/File:-NPLD_2016-_Bald_Mountain_Trails_%2B_Clean-up_(29658212980).jpg",
       },
     ],
-    activities: [
-      { title: "Trek encadré en refuge", details: "Découvrir une randonnée sportive de plusieurs jours en refuge et la gestion responsable de l'eau, des déchets et de l'énergie en milieu fragile." },
-      { title: "Observation de la faune sauvage", details: "Observer bouquetins et chamois à distance, avec des jumelles, lors d'une sortie matinale encadrée par un guide naturaliste." },
-      { title: "VTT de descente ou randonnée aquatique", details: "Pratiquer une activité sportive adaptée aux conditions et découvrir les enjeux de préservation des torrents alpins et de l'eau." },
-      { title: "Chantier participatif éco-citoyen", details: "Participer à une action encadrée de nettoyage d'un sentier ou de restauration d'un chemin en pierre sèche." },
-    ],
+    activities: {
+      summer: [
+        { title: "Trek en refuge", details: "Partir sur plusieurs jours avec un encadrement adapté et gérer l'eau, les déchets et l'énergie avec soin dans les milieux fragiles." },
+        { title: "Chantier éco-citoyen", details: "Participer, selon les partenariats locaux, à une demi-journée de nettoyage de sentier ou de restauration d'un chemin avec des professionnels du territoire." },
+        { title: "VTT de descente ou canyoning doux", details: "Découvrir une activité sportive encadrée et les enjeux de préservation des torrents alpins ; le choix dépend du site et des conditions." },
+      ],
+      winter: [
+        { title: "Initiation au ski de randonnée", details: "Découvrir le ski de randonnée ou une randonnée alpine hivernale avec des professionnels, et aborder la nivologie ainsi que la prévention des risques." },
+        { title: "Zones de tranquillité de la faune", details: "Comprendre comment le hors-piste peut déranger le tétras-lyre et les chamois, et apprendre à respecter les zones protégées." },
+        { title: "Abri de neige et bivouac nordique", details: "Découvrir la construction d'un abri de neige et la vie dehors en hiver. Une nuit en bivouac n'est envisagée qu'avec un encadrement qualifié et si les conditions le permettent." },
+      ],
+    },
   },
   {
     ageGroup: "adult",
@@ -209,12 +227,18 @@ const programs: CampProgram[] = [
         source: "https://commons.wikimedia.org/wiki/File:Montage_of_Shirouma_mountains_alpine_plant_belt.jpg",
       },
     ],
-    activities: [
-      { title: "Alpinisme, grande randonnée ou ski de randonnée", details: "Selon la saison, le programme du départ et les conditions, découvrir la pratique en altitude avec un encadrement qualifié et une attention aux risques." },
-      { title: "Échange sur l'avenir du tourisme en station", details: "Rencontrer des guides, écologues ou accompagnateurs et discuter des impacts du tourisme de masse et des solutions pour un sport outdoor durable." },
-      { title: "Bivouac d'altitude responsable", details: "Découvrir les principes du bivouac zéro déchet et de la cuisine de plein air, en privilégiant si possible les produits locaux." },
-      { title: "Cartographie de la biodiversité", details: "S'initier aux observations participatives de la faune et de la flore avec des outils de sciences naturalistes, par exemple Faune-France si adapté au lieu." },
-    ],
+    activities: {
+      summer: [
+        { title: "Alpinisme ou grande randonnée engagée", details: "Découvrir la haute montagne avec un encadrement qualifié, en approfondissant la connaissance du milieu et la prévention des risques météo." },
+        { title: "Cartographie participative de la biodiversité", details: "Contribuer à des observations de la faune et de la flore avec des outils scientifiques adaptés au territoire et au programme." },
+        { title: "Rencontre autour de la montagne durable", details: "Échanger avec des guides, écologues ou acteurs locaux sur l'avenir du tourisme et les pratiques outdoor responsables." },
+      ],
+      winter: [
+        { title: "Ski-alpinisme et sécurité", details: "Pratiquer avec des professionnels, aborder le risque nivologique et s'initier à l'utilisation du DVA, de la pelle et de la sonde." },
+        { title: "Bivouac d'altitude zéro déchet", details: "Découvrir l'autonomie et la cuisine hivernale avec des produits locaux. Un bivouac n'est envisagé qu'avec un encadrement qualifié et si les conditions le permettent." },
+        { title: "Transition des sports d'hiver", details: "Observer les impacts des sports d'hiver et échanger sur les solutions de transition des stations et la préservation des espaces sauvages." },
+      ],
+    },
   },
 ];
 
@@ -595,16 +619,23 @@ function ProgramPage() {
               </figure>
             ))}
           </div>
-          <div className="camp-activity-list">
-            {program.activities.map((activity, index) => (
-              <article className="camp-activity-card" key={activity.title}>
-                <span className="camp-activity-number">0{index + 1}</span>
-                <div><h3>{activity.title}</h3><p>{activity.details}</p></div>
-              </article>
+          <div className="camp-season-activity-list">
+            {seasonSections.map(({ season, title }) => (
+              <section className={`camp-season-activities camp-season-activities-${season}`} key={season} aria-labelledby={`camp-activities-${season}`}>
+                <h3 id={`camp-activities-${season}`}>{season === "summer" ? "☀️" : "❄️"} {title}</h3>
+                <div className="camp-activity-list">
+                  {program.activities[season].map((activity, index) => (
+                    <article className="camp-activity-card" key={activity.title}>
+                      <span className="camp-activity-number">0{index + 1}</span>
+                      <div><h4>{activity.title}</h4><p>{activity.details}</p></div>
+                    </article>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
           <p className="camp-program-disclaimer">
-            Ces activités présentent les idées du séjour. Le programme réellement proposé est précisé pour chaque départ publié et peut varier selon la saison, les conditions, le lieu et l'encadrement disponible.
+            Ces activités sont des idées de programme et ne sont pas garanties. Les sorties techniques, bivouacs et activités avec des mineurs nécessitent un encadrement qualifié ; toute activité peut être adaptée selon la météo, la sécurité, le lieu et les autorisations.
           </p>
         </section>
 
