@@ -35,6 +35,17 @@ const enrollmentRateLimit = rateLimit({
     });
   },
 });
+const contactMessageRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: (_request, response) => {
+    response.status(429).json({
+      error: { code: "RATE_LIMITED", message: "Trop de messages envoyés. Réessaie dans quelques minutes." },
+    });
+  },
+});
 
 function dateOnly(value: string | Date) {
   if (typeof value === "string") return value.slice(0, 10);
@@ -278,6 +289,48 @@ router.post("/api/camp-enrollments/:id/cancel", requireRole("customer"), async (
     client.release();
   }
   response.json({ enrollment: { id: enrollmentId, status: "cancelled", cancellationReason: reason } });
+});
+
+router.post("/api/contact-messages", requireRole("customer"), contactMessageRateLimit, async (request, response) => {
+  const { message } = z.object({
+    message: z.string().trim().min(1, "Le message ne peut pas être vide.").max(3000),
+  }).parse(request.body);
+  const result = await pool.query<{ id: string; created_at: Date }>(
+    `INSERT INTO contact_messages (customer_user_id, message)
+     VALUES ($1, $2)
+     RETURNING id, created_at`,
+    [request.user!.id, message],
+  );
+  response.status(201).json({
+    message: {
+      id: result.rows[0]!.id,
+      createdAt: result.rows[0]!.created_at,
+    },
+  });
+});
+
+router.get("/api/admin/contact-messages", requireRole("admin"), async (_request, response) => {
+  const result = await pool.query<{
+    id: string;
+    message: string;
+    created_at: Date;
+    customer_name: string;
+    customer_email: string;
+  }>(
+    `SELECT contact.id, contact.message, contact.created_at,
+            customer.full_name AS customer_name, customer.email AS customer_email
+     FROM contact_messages contact
+     JOIN users customer ON customer.id = contact.customer_user_id
+     ORDER BY contact.created_at DESC`,
+  );
+  response.json({
+    messages: result.rows.map((row) => ({
+      id: row.id,
+      message: row.message,
+      createdAt: row.created_at,
+      customer: { name: row.customer_name, email: row.customer_email },
+    })),
+  });
 });
 
 router.get("/api/admin/camp-sessions", requireRole("admin"), async (_request, response) => {

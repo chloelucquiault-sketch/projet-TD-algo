@@ -232,6 +232,11 @@ body { min-width: 320px; }
 .camp-enroll-aside p { color: #6f6a6b; font-size: 11px; line-height: 1.75; }
 .camp-enroll-aside p strong { color: #a55059; }
 .camp-account-page > h1, .camp-admin-page > h1 { font-size: 42px; }
+.camp-contact-page { padding-top: 40px; }
+.camp-contact-page > h1 { margin-bottom: 12px; font-size: 42px; }
+.camp-contact-page > p { max-width: 700px; color: #676a5f; font-size: 12px; line-height: 1.7; }
+.camp-contact-form { max-width: 680px; margin-top: 22px; }
+.camp-contact-form textarea { min-height: 180px; }
 .camp-account-page > .camp-enrollment-list, .camp-admin-page > .camp-admin-section { margin-top: 25px; }
 .camp-empty { padding-top: 55px; padding-bottom: 55px; text-align: center; color: #68656c; }
 .camp-loading { min-height: 52vh; padding-top: 65px; color: #77737a; text-align: center; }
@@ -261,6 +266,12 @@ body { min-width: 320px; }
 .camp-admin-section { margin: 36px 0; padding: 22px; border: 1px solid #ece3dc; background: #fff; }
 .camp-admin-section > h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 24px; }
 .camp-admin-section > h2 span { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #f4ebe0; color: #a55059; font: 700 11px "DM Sans", sans-serif; }
+.camp-contact-message-list { display: grid; gap: 12px; }
+.camp-contact-message { padding: 16px; border: 1px solid #e9e1dc; background: #faf8f5; }
+.camp-contact-message-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; color: #3d5140; font-size: 11px; }
+.camp-contact-message-heading a { color: #a55059; text-decoration: underline; }
+.camp-contact-message-heading time { margin-left: auto; color: #77727a; font-size: 10px; }
+.camp-contact-message > p { margin: 12px 0 0; color: #55545d; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .camp-session-form { max-width: 740px; }
 .camp-form-hint { margin: 0; color: #77727a; font-size: 10px; line-height: 1.6; }
 .camp-session-admin-list { display: grid; gap: 10px; }

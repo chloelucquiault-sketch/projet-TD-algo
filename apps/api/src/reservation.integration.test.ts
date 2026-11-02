@@ -382,6 +382,28 @@ suite("API de réservation avec PostgreSQL", () => {
     expect(adminLogin.status).toBe(200);
     expect(adminCookie).toBeTruthy();
 
+    const contactMessage = await fetch(`${baseUrl}/api/contact-messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: registeredCookie },
+      body: JSON.stringify({ message: "Question de test pour l'organisateur." }),
+    });
+    expect(contactMessage.status).toBe(201);
+    const forbiddenContactInbox = await fetch(`${baseUrl}/api/admin/contact-messages`, {
+      headers: { cookie: registeredCookie },
+    });
+    expect(forbiddenContactInbox.status).toBe(403);
+    const contactInbox = await fetch(`${baseUrl}/api/admin/contact-messages`, {
+      headers: { cookie: adminCookie },
+    });
+    expect(contactInbox.status).toBe(200);
+    expect(await contactInbox.text()).toContain("Question de test pour l'organisateur.");
+    const emptyContactMessage = await fetch(`${baseUrl}/api/contact-messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: registeredCookie },
+      body: JSON.stringify({ message: "   " }),
+    });
+    expect(emptyContactMessage.status).toBe(400);
+
     const invalidSummerDeparture = await fetch(`${baseUrl}/api/admin/camp-sessions`, {
       method: "POST",
       headers: { "content-type": "application/json", cookie: adminCookie },

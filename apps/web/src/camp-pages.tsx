@@ -66,6 +66,12 @@ type Enrollment = {
   session: Pick<CampSession, "id" | "title" | "season" | "ageGroup" | "startDate" | "endDate">;
   participants: Participant[];
 };
+type ContactMessage = {
+  id: string;
+  message: string;
+  createdAt: string;
+  customer: { name: string; email: string };
+};
 
 const programs: CampProgram[] = [
   {
@@ -321,6 +327,7 @@ function Header() {
         <nav aria-label="Navigation principale">
           <Link to="/#programmes">Les séjours</Link>
           {user?.role === "customer" && <Link to="/mes-inscriptions">Mes inscriptions</Link>}
+          {user?.role !== "admin" && <Link className="camp-button camp-button-outline" to="/aide-et-contact">Aide et contact</Link>}
         </nav>
         <div className="camp-nav-account">
           {user ? (
@@ -1003,6 +1010,7 @@ function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState<CampSession[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1010,12 +1018,14 @@ function AdminPage() {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
 
   async function reload() {
-    const [sessionResult, enrollmentResult] = await Promise.all([
+    const [sessionResult, enrollmentResult, messageResult] = await Promise.all([
       api<{ sessions: CampSession[] }>("/api/admin/camp-sessions"),
       api<{ enrollments: Enrollment[] }>("/api/admin/camp-enrollments"),
+      api<{ messages: ContactMessage[] }>("/api/admin/contact-messages"),
     ]);
     setSessions(sessionResult.sessions);
     setEnrollments(enrollmentResult.enrollments);
+    setContactMessages(messageResult.messages);
     setError("");
   }
 
@@ -1184,6 +1194,81 @@ function AdminPage() {
           <EnrollmentCard key={enrollment.id} enrollment={enrollment} admin onUpdate={updateEnrollment} />
         ))}</div>
       </section>
+      <section className="camp-admin-section">
+        <h2>Aide et contact <span>{contactMessages.length}</span></h2>
+        {loading && <p role="status">Chargement…</p>}
+        {!loading && !contactMessages.length && <p>Aucun message reçu.</p>}
+        <div className="camp-contact-message-list">
+          {contactMessages.map((message) => (
+            <article className="camp-contact-message" key={message.id}>
+              <div className="camp-contact-message-heading">
+                <b>{message.customer.name}</b>
+                <a href={`mailto:${message.customer.email}`}>{message.customer.email}</a>
+                <time dateTime={message.createdAt}>{formatDate(message.createdAt.slice(0, 10))}</time>
+              </div>
+              <p>{message.message}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <Footer />
+    </main>
+  );
+}
+
+function ContactPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  if (authLoading) return <LoadingPage />;
+  if (!user) return <Navigate to={`/connexion?retour=${encodeURIComponent("/aide-et-contact")}`} replace />;
+  if (user.role === "admin") return <Navigate to="/organisateur" replace />;
+
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api("/api/contact-messages", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      });
+      setMessage("");
+      setNotice("Votre message a bien été envoyé à l'organisateur.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Le message n'a pas pu être envoyé.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="camp-container camp-contact-page">
+      <Link className="camp-back-link" to="/">← Retour aux séjours</Link>
+      <span className="camp-eyebrow">ESPACE FAMILLE</span>
+      <h1>Aide et contact</h1>
+      <p>Écris à l'organisateur pour toute question sur les séjours ou ta réservation. Il pourra te répondre à l'adresse {user.email}.</p>
+      {notice && <p className="camp-success" role="status">{notice}</p>}
+      {error && <p className="camp-form-error" role="alert">{error}</p>}
+      <form className="camp-form camp-contact-form" onSubmit={sendMessage}>
+        <label htmlFor="camp-contact-message">Ton message</label>
+        <textarea
+          id="camp-contact-message"
+          required
+          maxLength={3000}
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder="Écris ton message à l'organisateur…"
+        />
+        <p className="camp-form-hint">Ton nom et ton adresse e-mail seront transmis avec ton message. Maximum 3 000 caractères.</p>
+        <button className="camp-button camp-button-primary" type="submit" disabled={busy}>
+          {busy ? "Envoi…" : "Envoyer à l'organisateur"}
+        </button>
+      </form>
       <Footer />
     </main>
   );
@@ -1210,6 +1295,7 @@ export function CampApp() {
           <Route path="/inscription" element={<AuthPage mode="register" />} />
           <Route path="/colonies/:id/inscription" element={<EnrollmentPage />} />
           <Route path="/mes-inscriptions" element={<CustomerPage />} />
+          <Route path="/aide-et-contact" element={<ContactPage />} />
           <Route path="/organisateur" element={<AdminPage />} />
           <Route path="*" element={<main className="camp-container camp-empty"><h1>Page introuvable</h1><Link to="/">Retour à l'accueil</Link></main>} />
         </Routes>

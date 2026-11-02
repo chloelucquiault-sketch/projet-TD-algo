@@ -64,6 +64,7 @@ function mockApi(
   expireOnEnrollment = false,
   multipleSessions = false,
   enrollments: typeof activeEnrollment[] = [],
+  contactMessages: { id: string; message: string; createdAt: string; customer: { name: string; email: string } }[] = [],
 ) {
   let authenticated = signedIn;
   const signedInUser = { ...customer, role };
@@ -85,6 +86,12 @@ function mockApi(
         status = 201;
       }
     } else if (path === "/api/camp-enrollments/mine") body = { enrollments };
+    else if (path === "/api/contact-messages" && init?.method === "POST") {
+      body = { message: { id: "contact-message-id", createdAt: "2030-01-02T10:00:00.000Z" } };
+      status = 201;
+    } else if (path === "/api/admin/contact-messages") body = { messages: contactMessages };
+    else if (path === "/api/admin/camp-sessions") body = { sessions: [] };
+    else if (path === "/api/admin/camp-enrollments") body = { enrollments: [] };
     else if (path === `/api/camp-enrollments/${activeEnrollment.id}/cancel` && init?.method === "POST") {
       body = {
         enrollment: {
@@ -218,6 +225,42 @@ describe("application Alpes Camp", () => {
         participants: [{ firstName: "Lou", lastName: "Martin", birthDate: "2020-06-01" }],
       });
     });
+  });
+
+  it("permet d'envoyer un message à l'organisateur depuis aide et contact", async () => {
+    mockApi(true);
+    window.history.replaceState({}, "", "/");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    fireEvent.click(await screen.findByRole("link", { name: "Aide et contact" }));
+    expect(await screen.findByRole("heading", { name: /Aide et contact/ })).toBeTruthy();
+    expect(screen.getByText(/parent@example\.test/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Ton message"), {
+      target: { value: "Bonjour, pouvez-vous m'aider avec mon inscription ?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer à l'organisateur" }));
+
+    expect(await screen.findByText("Votre message a bien été envoyé à l'organisateur.")).toBeTruthy();
+    const request = vi.mocked(fetch).mock.calls.find(([path]) => String(path) === "/api/contact-messages");
+    expect(request?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+      message: "Bonjour, pouvez-vous m'aider avec mon inscription ?",
+    });
+  });
+
+  it("affiche les messages reçus dans la boîte de réception organisateur", async () => {
+    mockApi(true, "admin", false, false, [], [{
+      id: "message-id",
+      message: "Question sur les dates du séjour.",
+      createdAt: "2030-01-02T10:00:00.000Z",
+      customer: { name: "Camille Martin", email: "parent@example.test" },
+    }]);
+    window.history.replaceState({}, "", "/organisateur");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByRole("heading", { name: /Aide et contact/ })).toBeTruthy();
+    expect(screen.getByText("Question sur les dates du séjour.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "parent@example.test" }).getAttribute("href")).toBe("mailto:parent@example.test");
   });
 
   it("annule une réservation avec un motif transmis à l'organisateur", async () => {

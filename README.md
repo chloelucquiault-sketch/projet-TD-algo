@@ -72,6 +72,7 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - Informations de naissance et consignes pratiques ; les données de santé sont chiffrées en mode normal et non chiffrées dans la démonstration fictive.
 - Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
 - Espace client pour consulter uniquement ses propres inscriptions et leurs détails, et annuler une réservation active en transmettant un motif à l'organisateur.
+- Formulaire « Aide et contact » pour envoyer un message à l'organisateur ; les messages et coordonnées sont consultables dans sa boîte de réception privée.
 - Espace organisateur protégé pour créer et publier les départs, voir les inscriptions et les confirmer ou annuler.
 - Vérification de la jauge côté serveur et compteur PostgreSQL protégé contre les inscriptions concurrentes.
 - Authentification par session PostgreSQL et cookie HTTP-only. L'inscription publique crée uniquement des comptes clients ; l'organisateur est créé par une commande locale.
@@ -108,7 +109,7 @@ La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalité
 - `apps/api` contient l'API, la couche de persistance et les migrations.
 - `docs/API.md` décrit les routes principales.
 
-La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains ; `013_camp_cancellation_reason.sql` ajoute le motif transmis lors d'une annulation par le client. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
+La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains ; `013_camp_cancellation_reason.sql` ajoute le motif transmis lors d'une annulation par le client ; `014_contact_messages.sql` crée la boîte de réception des messages client pour l'organisateur. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
 
 ## Démarrage local (Windows / PowerShell)
 

@@ -31,6 +31,7 @@ Les rôles sont `customer` et `admin`. L'inscription publique ne permet pas de c
 | `POST` | `/api/camp-sessions/:id/enrollments` | Client | Inscrit de 1 à 20 participants à un départ publié |
 | `GET` | `/api/camp-enrollments/mine` | Client | Retourne uniquement les inscriptions du client connecté |
 | `POST` | `/api/camp-enrollments/:id/cancel` | Client propriétaire | Annule une réservation active avec un motif obligatoire (1 à 1 000 caractères) |
+| `POST` | `/api/contact-messages` | Client | Envoie un message (1 à 3 000 caractères) à la boîte de réception organisateur |
 
 Exemple de demande :
 
@@ -69,6 +70,7 @@ Toutes les routes de ce tableau nécessitent le rôle `admin`.
 | `PATCH` | `/api/admin/camp-sessions/:id` | Modifie le départ ou ouvre/ferme les inscriptions |
 | `GET` | `/api/admin/camp-enrollments` | Liste les demandes et les informations privées des participants |
 | `PATCH` | `/api/admin/camp-enrollments/:id` | Confirme ou annule une demande en attente |
+| `GET` | `/api/admin/contact-messages` | Liste les messages d'aide et de contact avec les coordonnées de leur auteur |
 
 Exemple de création d'un départ :
 
