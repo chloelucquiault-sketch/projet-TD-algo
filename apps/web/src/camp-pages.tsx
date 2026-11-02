@@ -483,7 +483,7 @@ function HomePage() {
                       <div>
                         <strong>{session.title}</strong>
                         <span>{seasonName[session.season]} · {formatDate(session.startDate)} au {formatDate(session.endDate)}</span>
-                        <span>{session.remainingPlaces} place(s) restante(s) sur {session.capacity}</span>
+                        <span>{session.remainingPlaces} place(s) restante(s)</span>
                       </div>
                       {session.remainingPlaces === 0 && <span className="camp-full-label">Complet</span>}
                     </div>
@@ -553,8 +553,6 @@ function ProgramPage() {
   }
 
   const departures = sessions.filter((session) => session.ageGroup === program.ageGroup);
-  const remainingPlaces = departures.reduce((total, session) => total + session.remainingPlaces, 0);
-  const totalPlaces = departures.reduce((total, session) => total + session.capacity, 0);
 
   return (
     <main className="camp-container camp-program-page">
@@ -599,9 +597,7 @@ function ProgramPage() {
         <aside className="camp-program-booking" aria-labelledby="camp-booking-title">
           <span className="camp-eyebrow">INSCRIPTIONS</span>
           <h2 id="camp-booking-title">Réserver ce séjour</h2>
-          <p className="camp-program-place-total">
-            {loading ? "Chargement des places restantes…" : error ? "Disponibilités indisponibles" : `${remainingPlaces} place(s) restante(s) sur ${totalPlaces}`}
-          </p>
+          {loading && <p role="status">Chargement des créneaux disponibles…</p>}
           {error && <p className="camp-form-error" role="alert">{error}</p>}
           {!loading && !error && departures.length === 0 && <p className="camp-no-departure">Aucun départ ouvert à l'inscription pour le moment.</p>}
           <div className="camp-program-departures">
@@ -612,7 +608,7 @@ function ProgramPage() {
                   <h3>{session.title}</h3>
                   <p>{formatDate(session.startDate)} – {formatDate(session.endDate)} · {session.durationDays} jours</p>
                   <strong className={session.remainingPlaces === 0 ? "camp-full-label" : ""}>
-                    {session.remainingPlaces} place(s) restante(s) sur {session.capacity}
+                    {session.remainingPlaces} place(s) restante(s)
                   </strong>
                   {session.description && <p>{session.description}</p>}
                   {session.activities && <p>Activités prévues : {session.activities}</p>}
@@ -678,6 +674,7 @@ function AuthPage({ mode }: { mode: "login" | "register" }) {
         <p className="camp-auth-switch">
           {mode === "login" ? <>Pas encore de compte ? <Link to={`/inscription?retour=${encodeURIComponent(redirect)}`}>Créer un compte</Link></> : <>Déjà inscrit ? <Link to={`/connexion?retour=${encodeURIComponent(redirect)}`}>Se connecter</Link></>}
         </p>
+        {mode === "login" && <p className="camp-auth-private">Merci de contacter l'organisateur pour tout oubli de mot de passe.</p>}
         <p className="camp-auth-private">Les comptes clients sont créés ici. L'accès organisateur n'est pas ouvert à l'inscription publique.</p>
       </section>
       <Footer />

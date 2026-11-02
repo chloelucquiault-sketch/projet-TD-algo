@@ -1,10 +1,15 @@
 import "./config.js";
 import { createApp } from "./app.js";
 import { purgeExpiredCampPrivateData } from "./camp-private-data-retention.js";
+import { getOrCreateDemoSessionSecret } from "./demo-session-secret.js";
 import { pool } from "./db/pool.js";
 
 const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3001);
 const privateDataRetentionIntervalMs = 15 * 60 * 1000;
+
+if (process.env.DEMO_MODE === "true" && !process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = await getOrCreateDemoSessionSecret();
+}
 
 const app = createApp();
 const server = app.listen(port, "0.0.0.0", () => {

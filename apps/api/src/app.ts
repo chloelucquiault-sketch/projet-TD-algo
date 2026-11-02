@@ -4,7 +4,6 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { pool } from "./db/pool.js";
 import { errorHandler, HttpError } from "./errors.js";
@@ -20,12 +19,15 @@ export function createApp() {
   const app = express();
   const production = process.env.NODE_ENV === "production";
   const demoMode = process.env.DEMO_MODE === "true";
-  const sessionSecret = process.env.SESSION_SECRET ?? (demoMode ? randomBytes(32).toString("base64url") : undefined);
-  if (!sessionSecret || (!demoMode && sessionSecret.length < 32)) {
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret && demoMode) {
+    throw new Error("Le secret persistant des sessions de démonstration doit être chargé avant de créer l'application.");
+  }
+  if (!sessionSecret || sessionSecret.length < 32) {
     throw new Error("SESSION_SECRET doit être défini et contenir au moins 32 caractères.");
   }
-  if (demoMode && !process.env.SESSION_SECRET) {
-    console.warn("Mode démo : les sessions expireront au redémarrage et les données de santé ne seront pas chiffrées.");
+  if (demoMode) {
+    console.warn("Mode démo : les données de santé ne seront pas chiffrées.");
   }
   app.disable("x-powered-by");
   if (production) app.set("trust proxy", 1);

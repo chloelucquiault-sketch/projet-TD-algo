@@ -23,13 +23,13 @@ function requireSession(request: Request) {
 }
 
 async function startUserSession(request: Request, userId: string) {
-  const userSession = requireSession(request);
   await new Promise<void>((resolve, reject) => {
-    userSession.regenerate((error) => {
+    requireSession(request).regenerate((error) => {
       if (error) reject(error);
       else resolve();
     });
   });
+  const userSession = requireSession(request);
   userSession.userId = userId;
   await new Promise<void>((resolve, reject) => {
     userSession.save((error) => {

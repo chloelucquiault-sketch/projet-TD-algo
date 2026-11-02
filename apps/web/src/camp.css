@@ -156,7 +156,6 @@ body { min-width: 320px; }
 .camp-program-disclaimer { margin-top: 18px; }
 .camp-program-booking { position: sticky; top: 105px; padding: 23px; border: 1px solid #dce2d7; background: #f7f8f5; }
 .camp-program-booking > h2 { margin-bottom: 8px; }
-.camp-program-place-total { margin: 0 0 15px; color: #4e6848; font-size: 13px; font-weight: 750; }
 .camp-program-departures { display: grid; gap: 11px; }
 .camp-program-departure { display: grid; gap: 12px; padding: 15px; border: 1px solid #e1e5dd; background: #fff; }
 .camp-program-season { color: #627858; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }

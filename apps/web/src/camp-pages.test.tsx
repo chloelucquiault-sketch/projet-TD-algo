@@ -25,8 +25,22 @@ const campSession = {
   reservedPlaces: 2,
   remainingPlaces: 18,
 };
+const secondCampSession = {
+  ...campSession,
+  id: "80f77778-e1f2-4c7a-8d55-0d5443510068",
+  title: "Colonie des Petits — créneau de janvier",
+  startDate: "2031-01-01",
+  endDate: "2031-01-04",
+  reservedPlaces: 7,
+  remainingPlaces: 13,
+};
 
-function mockApi(signedIn = false, role: "customer" | "admin" = "customer", expireOnEnrollment = false) {
+function mockApi(
+  signedIn = false,
+  role: "customer" | "admin" = "customer",
+  expireOnEnrollment = false,
+  multipleSessions = false,
+) {
   let authenticated = signedIn;
   const signedInUser = { ...customer, role };
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -37,7 +51,7 @@ function mockApi(signedIn = false, role: "customer" | "admin" = "customer", expi
     else if (path === "/api/auth/login" && init?.method === "POST") {
       authenticated = true;
       body = { user: signedInUser };
-    } else if (path === "/api/camp-sessions") body = { sessions: [campSession] };
+    } else if (path === "/api/camp-sessions") body = { sessions: multipleSessions ? [campSession, secondCampSession] : [campSession] };
     else if (path === `/api/camp-sessions/${sessionId}/enrollments` && init?.method === "POST") {
       if (expireOnEnrollment) {
         body = { error: { message: "Connecte-toi pour accéder à cette page." } };
@@ -75,7 +89,7 @@ describe("application Alpes Camp", () => {
     expect(document.querySelector(".camp-hero-stamp")).toBeNull();
     expect(screen.queryByText("20 places maximum par départ")).toBeNull();
     expect(await screen.findByText("Colonie des Petits")).toBeTruthy();
-    expect(screen.getByText("18 place(s) restante(s) sur 20")).toBeTruthy();
+    expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
     expect(screen.queryByText("Domaine des Cèdres")).toBeNull();
   });
 
@@ -91,7 +105,7 @@ describe("application Alpes Camp", () => {
     expect(screen.getByRole("heading", { name: "Petits gardiens de la montagne" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "Un groupe de bouquetins évolue sur une crête rocheuse des Alpes." })).toBeTruthy();
     expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
-    expect(screen.getAllByText("18 place(s) restante(s) sur 20")).toHaveLength(2);
+    expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Réserver" }));
     expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
   });
@@ -147,6 +161,28 @@ describe("application Alpes Camp", () => {
         participants: [{ firstName: "Lou", lastName: "Martin", birthDate: "2020-06-01" }],
       });
     });
+  });
+
+  it("affiche plusieurs créneaux et les places restantes pour chaque départ", async () => {
+    mockApi(false, "customer", false, true);
+    window.history.replaceState({}, "", "/sejours/little");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByRole("heading", { name: "Réserver ce séjour" })).toBeTruthy();
+    expect(screen.getByText("Colonie des Petits")).toBeTruthy();
+    expect(screen.getByText("Colonie des Petits — créneau de janvier")).toBeTruthy();
+    expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
+    expect(screen.getByText("13 place(s) restante(s)")).toBeTruthy();
+    expect(screen.queryByText(/40 place\(s\) restante\(s\)/)).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Réserver" })).toHaveLength(2);
+  });
+
+  it("indique de contacter l'organisateur en cas d'oubli du mot de passe", async () => {
+    mockApi();
+    window.history.replaceState({}, "", "/connexion");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByText("Merci de contacter l'organisateur pour tout oubli de mot de passe.")).toBeTruthy();
   });
 
   it("renvoie vers la connexion si la session expire lors de l'envoi", async () => {

@@ -44,26 +44,27 @@ Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **
 
 ### Départs de démonstration
 
-La migration `009_demo_camp_sessions.sql` ouvre les inscriptions sur huit départs préconfigurés, avec 20 places chacun. Les dates suivent les fenêtres saisonnières et les durées définies ci-dessus :
+Les migrations `009_demo_camp_sessions.sql`, `011_additional_camp_sessions.sql` et `012_five_departures_per_group_and_season.sql` ouvrent cinq créneaux par combinaison saison/groupe d'âge, avec 20 places par créneau :
 
-| Saison | Groupe | Dates |
+| Saison | Groupe | Dates des séjours |
 |---|---|---|
-| Hiver 2026–2027 | Les Petits | 15–18 décembre 2026 |
-| Hiver 2026–2027 | Les Moyens | 10–16 janvier 2027 |
-| Hiver 2026–2027 | Les Ados | 7–13 février 2027 |
-| Hiver 2026–2027 | Adultes & Confirmés | 21–27 mars 2027 |
-| Été 2027 | Les Petits | 10–13 mai 2027 |
-| Été 2027 | Les Moyens | 20–26 juin 2027 |
-| Été 2027 | Les Ados | 18–24 juillet 2027 |
-| Été 2027 | Adultes & Confirmés | 15–21 août 2027 |
+| Hiver 2026–2027 | Les Petits | 15–18 décembre ; 1–4, 10–13 et 20–23 janvier ; 1–4 février |
+| Hiver 2026–2027 | Les Moyens | 10–16 et 20–26 janvier ; 1–7 et 15–21 février ; 1–7 mars |
+| Hiver 2026–2027 | Les Ados | 20–26 décembre ; 10–16 janvier ; 7–13 et 20–26 février ; 1–7 mars |
+| Hiver 2026–2027 | Adultes & Confirmés | 27 décembre–2 janvier ; 15–21 janvier ; 10–16 février ; 10–16 et 21–27 mars |
+| Été 2027 | Les Petits | 10–13 mai ; 1–4 et 15–18 juin ; 1–4 juillet ; 1–4 août |
+| Été 2027 | Les Moyens | 20–26 mai ; 20–26 juin ; 5–11 juillet ; 1–7 et 20–26 août |
+| Été 2027 | Les Ados | 15–21 mai ; 10–16 juin ; 18–24 juillet ; 1–7 août ; 1–7 septembre |
+| Été 2027 | Adultes & Confirmés | 10–16 mai ; 10–16 juin ; 10–16 juillet ; 15–21 et 25–31 août |
 
-Ce calendrier et les activités affichées sont fictifs, destinés à la démonstration et modifiables dans la base par l'organisateur. Ils ne garantissent pas qu'un séjour aura lieu.
+Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indication du mois après le jour. Ce calendrier et les activités affichées sont fictifs, destinés à la démonstration et modifiables dans la base par l'organisateur. Ils ne garantissent pas qu'un séjour aura lieu.
 
 ## Fonctionnalités
 
 - Catalogue public des départs d'été et d'hiver, filtrable par saison et groupe d'âge.
 - Fiche détaillée pour chaque groupe d'âge, accessible depuis sa carte, avec son thème, les activités de découverte et les départs ouverts à la réservation.
 - Accès direct à l'espace organisateur depuis le bouton de l'en-tête, réservé au compte administrateur.
+- La page de connexion invite à contacter l'organisateur en cas d'oubli du mot de passe ; aucun mécanisme de réinitialisation par e-mail n'est configuré.
 - Affichage du nombre de places restantes pour chaque départ ; la réservation est proposée uniquement lorsqu'il reste des places.
 - Jauge publique actualisée toutes les 15 secondes ; la disponibilité est toujours revérifiée au moment de l'inscription.
 - Inscription réservée aux comptes connectés, avec un formulaire permettant d'inscrire une fratrie.
@@ -88,7 +89,7 @@ Ce calendrier et les activités affichées sont fictifs, destinés à la démons
 
 En mode normal, les consignes alimentaires, informations médicales et demandes particulières sont chiffrées avec AES-256-GCM avant leur enregistrement. La clé `HEALTH_DATA_ENCRYPTION_KEY` est distincte du secret de session, n'est jamais stockée dans la base et doit être sauvegardée de manière sécurisée : sans cette clé, les champs privés déjà enregistrés ne pourront plus être déchiffrés. Elle ne doit jamais être commise ni partagée.
 
-L'image de démonstration du cours active explicitement `DEMO_MODE=true` : les champs de santé y sont enregistrés sans chiffrement et la session est perdue au redémarrage du conteneur si aucun `SESSION_SECRET` stable n'est configuré. Le formulaire avertit les visiteurs de n'utiliser que des informations fictives. Ne déploie pas cette configuration pour un service réel ni pour y saisir des informations personnelles ou médicales.
+L'image de démonstration du cours active explicitement `DEMO_MODE=true` : les champs de santé y sont enregistrés sans chiffrement. Le secret de session de démonstration est conservé dans PostgreSQL pour rester stable au redémarrage du conteneur. Le formulaire avertit les visiteurs de n'utiliser que des informations fictives. Ne déploie pas cette configuration pour un service réel ni pour y saisir des informations personnelles ou médicales.
 
 Les données privées sont renvoyées uniquement au compte client propriétaire et à l'administrateur. Le catalogue public ne reçoit aucune donnée de participant. Le consentement explicite est enregistré avec son horodatage et sa version.
 
@@ -204,7 +205,7 @@ En production, configure HTTPS, des cookies sécurisés, des secrets gérés hor
 
 Le dépôt contient un Dockerfile multi-étapes qui compile le frontend React sous `/projet-td-algo/`, sert le site et l'API Express sur le port 3000, applique les migrations PostgreSQL au démarrage et limite le pool à quatre connexions. Le proxy retire le préfixe `/projet-td-algo/` avant de transmettre les requêtes à Express : le cookie de session utilise donc le chemin `/` et un nom propre à l'application. La route `GET /api/health` vérifie PostgreSQL et la présence du schéma requis par les sessions, l'authentification et les inscriptions.
 
-La migration `009_demo_camp_sessions.sql` préconfigure et ouvre huit départs de démonstration (quatre groupes d'âge par saison) aux dates indiquées dans la section [Départs de démonstration](#départs-de-démonstration). Les dates et activités sont fictives et aucun lieu n'est défini.
+Les migrations `009_demo_camp_sessions.sql`, `011_additional_camp_sessions.sql` et `012_five_departures_per_group_and_season.sql` préconfigurent et ouvrent cinq créneaux par saison et par groupe d'âge aux dates indiquées dans la section [Départs de démonstration](#départs-de-démonstration). Les dates et activités sont fictives et aucun lieu n'est défini. La migration `010_demo_session_secret.sql` permet de conserver la session de connexion de démonstration entre les redémarrages.
 
 Le workflow `.github/workflows/publish.yml` publie `ghcr.io/chloelucquiault-sketch/projet-td-algo` à chaque push sur `main`. Dans **Settings → Secrets and variables → Actions**, configure `IHME_DEPLOY_TOKEN` comme secret, et `IHME_DEPLOY_URL` ainsi que `IHME_BASE_PATH=/projet-td-algo/` comme variables. Ensuite, lance le workflow **Construire et publier l’image**, coche **Déployer cette version après construction** et vérifie son résultat dans Actions.
 

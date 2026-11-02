@@ -143,6 +143,77 @@ suite("API de réservation avec PostgreSQL", () => {
     )).rejects.toMatchObject({ code: "23505" });
   });
 
+  it("conserve la session client et ses inscriptions après un redémarrage", async () => {
+    const { getOrCreateDemoSessionSecret } = await import("./demo-session-secret.js");
+    const previousSecret = process.env.SESSION_SECRET;
+    const previousDemoMode = process.env.DEMO_MODE;
+    let temporaryServer: Server | undefined;
+    let userId = "";
+    process.env.DEMO_MODE = "true";
+    process.env.SESSION_SECRET = await getOrCreateDemoSessionSecret();
+
+    try {
+      temporaryServer = createApp().listen(0);
+      await new Promise<void>((resolve) => temporaryServer!.once("listening", resolve));
+      const address = temporaryServer.address();
+      if (!address || typeof address === "string") throw new Error("Impossible de déterminer le port du serveur temporaire.");
+      const firstBaseUrl = `http://127.0.0.1:${address.port}`;
+      const registration = await fetch(`${firstBaseUrl}/api/auth/register`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: `persist-session-${Date.now()}@example.test`,
+          password: "un-mot-de-passe-integration",
+          fullName: "Compte session persistante",
+        }),
+      });
+      expect(registration.status).toBe(201);
+      userId = (await registration.json() as { user: { id: string } }).user.id;
+      const cookie = registration.headers.get("set-cookie")?.split(";")[0] ?? "";
+      expect(cookie).toBeTruthy();
+      const [cookieName, encodedCookieValue] = cookie.split("=", 2);
+      expect(cookieName).toBe(process.env.SESSION_COOKIE_NAME ?? "sid");
+      const sessionIdFromCookie = decodeURIComponent(encodedCookieValue!).slice(2).split(".")[0];
+      const savedSession = await pool.query<{ sid: string; count: string }>(
+        "SELECT sid, COUNT(*) OVER ()::text AS count FROM session WHERE sess->>'userId' = $1",
+        [userId],
+      );
+      expect(savedSession.rows[0]!.count).toBe("1");
+      expect(sessionIdFromCookie).toBe(savedSession.rows[0]!.sid);
+      const beforeRestart = await fetch(`${firstBaseUrl}/api/auth/me`, { headers: { cookie } });
+      expect(await beforeRestart.json()).toMatchObject({ user: { id: userId } });
+
+      temporaryServer.closeAllConnections();
+      await new Promise<void>((resolve, reject) => temporaryServer!.close((error) => error ? reject(error) : resolve()));
+      temporaryServer = createApp().listen(0);
+      await new Promise<void>((resolve) => temporaryServer!.once("listening", resolve));
+      const nextAddress = temporaryServer.address();
+      if (!nextAddress || typeof nextAddress === "string") throw new Error("Impossible de déterminer le port du second serveur.");
+      const nextBaseUrl = `http://127.0.0.1:${nextAddress.port}`;
+
+      const currentUser = await fetch(`${nextBaseUrl}/api/auth/me`, { headers: { cookie } });
+      expect(currentUser.status).toBe(200);
+      expect(await currentUser.json()).toMatchObject({
+        user: { id: userId, email: expect.stringMatching(/^persist-session-/) },
+      });
+      const enrollments = await fetch(`${nextBaseUrl}/api/camp-enrollments/mine`, { headers: { cookie } });
+      expect(enrollments.status).toBe(200);
+    } finally {
+      if (temporaryServer?.listening) {
+        temporaryServer.closeAllConnections();
+        await new Promise<void>((resolve, reject) => temporaryServer!.close((error) => error ? reject(error) : resolve()));
+      }
+      if (userId) {
+        await pool.query("DELETE FROM session WHERE sess->>'userId' = $1", [userId]);
+        await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+      }
+      if (previousSecret === undefined) delete process.env.SESSION_SECRET;
+      else process.env.SESSION_SECRET = previousSecret;
+      if (previousDemoMode === undefined) delete process.env.DEMO_MODE;
+      else process.env.DEMO_MODE = previousDemoMode;
+    }
+  }, 30_000);
+
   it("ne crée pas deux séjours qui se chevauchent sur le même équipement", async () => {
     const detailResponse = await fetch(`${baseUrl}/api/complexes/${complexId}`);
     expect(detailResponse.status).toBe(200);
