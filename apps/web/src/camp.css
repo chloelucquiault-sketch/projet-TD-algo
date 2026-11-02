@@ -113,20 +113,30 @@ body { min-width: 320px; }
 .camp-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .camp-section-heading h2, .camp-booking-note h2, .camp-admin-section > h2 { margin: 9px 0 0; color: #34445a; font: 700 clamp(27px, 3.2vw, 38px)/1.15 "Manrope", sans-serif; letter-spacing: -1.2px; }
 .camp-section-heading > p { margin: 0; color: #76747a; font-size: 11px; line-height: 1.7; }
+.camp-season-grid { display: grid; gap: 28px; }
+.camp-season-section { padding-top: 21px; border-top: 1px solid #e8e1d9; }
+.camp-season-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.camp-season-heading .camp-eyebrow { color: #718767; }
+.camp-season-heading h3 { margin: 0; color: #3d5140; font: 700 22px/1.3 "Manrope", sans-serif; }
+.camp-season-summer .camp-season-heading .camp-eyebrow { color: #a55059; }
 .camp-program-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
-.camp-program-card { min-width: 0; padding: 22px 18px 18px; display: flex; flex-direction: column; border: 1px solid #eee4dc; background: #fff; box-shadow: 0 9px 24px rgb(37 42 48 / 4%); color: inherit; text-decoration: none; transition: box-shadow .18s ease, transform .18s ease; }
+.camp-program-card { min-width: 0; padding: 22px 18px 18px; display: flex; flex-direction: column; border: 1px solid #eee4dc; background: #fff; box-shadow: 0 9px 24px rgb(37 42 48 / 4%); color: inherit; transition: box-shadow .18s ease, transform .18s ease; }
 .camp-program-card:hover { box-shadow: 0 13px 28px rgb(37 42 48 / 9%); transform: translateY(-2px); }
-.camp-program-card:focus-visible { outline: 3px solid #607955; outline-offset: 3px; }
+.camp-program-card a:focus-visible, .camp-departure-menu summary:focus-visible, .camp-program-season-menu summary:focus-visible { outline: 3px solid #607955; outline-offset: 3px; }
 .camp-tone-1 { border-top: 3px solid #a55059; }
 .camp-tone-2 { border-top: 3px solid #526c88; }
 .camp-tone-3 { border-top: 3px solid #d28579; }
 .camp-tone-4 { border-top: 3px solid #8a7b72; }
 .camp-program-number { color: #b7aaa4; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
 .camp-program-days { float: right; padding: 5px 8px; border-radius: 20px; background: #f5eeea; color: #765d68; font-size: 9px; font-weight: 700; }
-.camp-program-card h3 { margin: 21px 0 4px; color: #33445b; font: 700 20px "Manrope", sans-serif; }
+.camp-program-card h4 { margin: 21px 0 4px; color: #33445b; font: 700 20px "Manrope", sans-serif; }
+.camp-program-card h4 a { color: inherit; text-decoration: none; }
+.camp-program-card h4 a:hover { color: #718767; }
 .camp-program-card p { color: #77737a; font-size: 10px; line-height: 1.65; }
 .camp-program-card .camp-program-ages { margin: 0; color: #a55059; font-size: 9px; font-weight: 700; }
-.camp-departures { margin-top: 17px; padding-top: 12px; border-top: 1px solid #eee7e2; }
+.camp-departure-menu { margin-top: 17px; border-top: 1px solid #eee7e2; }
+.camp-departure-menu summary, .camp-program-season-menu summary { padding: 12px 0; color: #526c48; cursor: pointer; font-size: 10px; font-weight: 750; list-style-position: inside; }
+.camp-departures { padding-top: 2px; }
 .camp-departure { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid #f0ece9; }
 .camp-departure > div { min-width: 0; display: grid; gap: 4px; }
 .camp-departure strong { color: #454650; font-size: 9px; }
@@ -156,9 +166,11 @@ body { min-width: 320px; }
 .camp-program-disclaimer { margin-top: 18px; }
 .camp-program-booking { position: sticky; top: 105px; padding: 23px; border: 1px solid #dce2d7; background: #f7f8f5; }
 .camp-program-booking > h2 { margin-bottom: 8px; }
-.camp-program-departures { display: grid; gap: 11px; }
+.camp-program-departures { display: grid; gap: 10px; }
+.camp-program-season-menu { border: 1px solid #e1e5dd; background: #fff; }
+.camp-program-season-menu > summary { padding: 14px 15px; }
+.camp-program-season-list { display: grid; gap: 9px; padding: 0 10px 10px; }
 .camp-program-departure { display: grid; gap: 12px; padding: 15px; border: 1px solid #e1e5dd; background: #fff; }
-.camp-program-season { color: #627858; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
 .camp-program-departure h3 { margin: 5px 0; color: #3d5140; font-size: 14px; }
 .camp-program-departure p { margin: 5px 0; color: #676a5f; font-size: 10px; line-height: 1.6; }
 .camp-program-departure strong { color: #4e6848; font-size: 11px; }
@@ -298,7 +310,7 @@ body { min-width: 320px; }
   .camp-activity-card h3 { font-size: 14px; }
   .camp-activity-card p, .camp-program-disclaimer { font-size: 11px; }
   .camp-program-booking { padding: 18px 14px; }
-  .camp-program-card h3 { margin-top: 14px; }
+  .camp-program-card h4 { margin-top: 14px; }
   .camp-filters { align-items: stretch; flex-direction: column; }
   .camp-filters select { min-width: 0; }
   .camp-filters p { margin: 3px 0 0; }
@@ -347,7 +359,7 @@ body { min-width: 320px; }
 .camp-hero-points { color: #6a6e60; }
 .camp-hero-points span::before, .camp-mountain { color: #607955; }
 .camp-hero-card { border-color: #dce2d7; }
-.camp-hero-card strong, .camp-section-heading h2, .camp-booking-note h2, .camp-admin-section > h2, .camp-program-card h3, .camp-enroll-aside h2, .camp-enrollment-card h2, .camp-participant-summary h3, .camp-session-admin-card h3 { color: #3d5140; }
+.camp-hero-card strong, .camp-section-heading h2, .camp-booking-note h2, .camp-admin-section > h2, .camp-season-heading h3, .camp-program-card h4, .camp-enroll-aside h2, .camp-enrollment-card h2, .camp-participant-summary h3, .camp-session-admin-card h3 { color: #3d5140; }
 .camp-program-card { border-color: #e4e8df; }
 .camp-tone-1 { border-top-color: #718767; }
 .camp-tone-2 { border-top-color: #8b7659; }
@@ -355,7 +367,7 @@ body { min-width: 320px; }
 .camp-tone-4 { border-top-color: #796e59; }
 .camp-program-card .camp-program-ages, .camp-departure a, .camp-full-label { color: #577253; }
 .camp-program-days { background: #edf1e9; color: #647252; }
-.camp-departures, .camp-departure { border-color: #e7e9e2; }
+.camp-departures, .camp-departure, .camp-departure-menu { border-color: #e7e9e2; }
 .camp-departure strong { color: #4f594c; }
 .camp-filters, .camp-enroll-aside, .camp-admin-note { background: #f0f2eb; }
 .camp-booking-note { background: #e8eee5; }

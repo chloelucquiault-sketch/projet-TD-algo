@@ -5,6 +5,10 @@ import { api, ApiRequestError, formatDate } from "./api";
 type User = { id: string; email: string; fullName: string; role: "customer" | "admin" };
 type AgeGroup = "little" | "middle" | "teen" | "adult";
 type Season = "summer" | "winter";
+const seasonSections: { season: Season; title: string }[] = [
+  { season: "winter", title: "Séjours d'hiver" },
+  { season: "summer", title: "Séjours d'été" },
+];
 type ActivityIllustration = {
   src: string;
   alt: string;
@@ -412,7 +416,6 @@ function HomePage() {
   const [sessions, setSessions] = useState<CampSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [seasonFilter, setSeasonFilter] = useState<Season | "all">("all");
   const [ageFilter, setAgeFilter] = useState<AgeGroup | "all">("all");
 
   useEffect(() => {
@@ -431,10 +434,8 @@ function HomePage() {
   }, []);
 
   const filteredSessions = useMemo(
-    () => sessions.filter((session) =>
-      (seasonFilter === "all" || session.season === seasonFilter)
-      && (ageFilter === "all" || session.ageGroup === ageFilter)),
-    [sessions, seasonFilter, ageFilter],
+    () => sessions.filter((session) => ageFilter === "all" || session.ageGroup === ageFilter),
+    [sessions, ageFilter],
   );
 
   return (
@@ -467,41 +468,53 @@ function HomePage() {
           </div>
           <p>Les âges sont des repères. Une situation particulière ?<br />L'équipe pourra en discuter avec vous.</p>
         </div>
-        <div className="camp-program-grid">
-          {programs.filter((program) => ageFilter === "all" || program.ageGroup === ageFilter).map((program, index) => {
-            const programSessions = filteredSessions.filter((session) => session.ageGroup === program.ageGroup);
+        <div className="camp-season-grid">
+          {seasonSections.map(({ season, title }) => {
+            const seasonSessions = filteredSessions.filter((session) => session.season === season);
             return (
-              <Link className={`camp-program-card camp-tone-${index + 1}`} key={program.ageGroup} to={`/sejours/${program.ageGroup}`} aria-label={`Découvrir le séjour ${program.title}`}>
-                <span className="camp-program-number">0{index + 1}</span>
-                <span className="camp-program-days">{program.days} jours</span>
-                <h3>{program.title}</h3>
-                <p className="camp-program-ages">{program.ages} · âge recommandé</p>
-                <p>{program.description}</p>
-                <div className="camp-departures">
-                  {programSessions.map((session) => (
-                    <div className="camp-departure" key={session.id}>
-                      <div>
-                        <strong>{session.title}</strong>
-                        <span>{seasonName[session.season]} · {formatDate(session.startDate)} au {formatDate(session.endDate)}</span>
-                        <span>{session.remainingPlaces} place(s) restante(s)</span>
-                      </div>
-                      {session.remainingPlaces === 0 && <span className="camp-full-label">Complet</span>}
-                    </div>
-                  ))}
-                  {!loading && !error && !programSessions.length && <span className="camp-no-departure">Aucun départ publié pour le moment</span>}
+              <section className={`camp-season-section camp-season-${season}`} key={season} aria-labelledby={`camp-season-${season}`}>
+                <header className="camp-season-heading">
+                  <span className="camp-eyebrow">{season === "winter" ? "DÉCEMBRE À MARS" : "MAI À SEPTEMBRE"}</span>
+                  <h3 id={`camp-season-${season}`}>{title}</h3>
+                </header>
+                <div className="camp-program-grid">
+                  {programs.filter((program) => ageFilter === "all" || program.ageGroup === ageFilter).map((program, index) => {
+                    const programSessions = seasonSessions.filter((session) => session.ageGroup === program.ageGroup);
+                    return (
+                      <article className={`camp-program-card camp-tone-${index + 1}`} key={program.ageGroup}>
+                        <span className="camp-program-number">0{index + 1}</span>
+                        <span className="camp-program-days">{program.days} jours</span>
+                        <h4>{program.title}</h4>
+                        <p className="camp-program-ages">{program.ages} · âge recommandé</p>
+                        <p>{program.description}</p>
+                        <details className="camp-departure-menu">
+                          <summary>{programSessions.length ? `Voir les créneaux (${programSessions.length})` : "Aucun créneau disponible"}</summary>
+                          <div className="camp-departures">
+                            {programSessions.map((session) => (
+                              <div className="camp-departure" key={session.id}>
+                                <div>
+                                  <strong>{session.title}</strong>
+                                  <span>{formatDate(session.startDate)} au {formatDate(session.endDate)}</span>
+                                  <span>{session.remainingPlaces} place(s) restante(s)</span>
+                                </div>
+                                {session.remainingPlaces > 0
+                                  ? <Link to={`/colonies/${session.id}/inscription`}>Réserver</Link>
+                                  : <span className="camp-full-label">Complet</span>}
+                              </div>
+                            ))}
+                            {!loading && !error && !programSessions.length && <span className="camp-no-departure">Aucun départ publié pour le moment</span>}
+                          </div>
+                        </details>
+                        <Link className="camp-program-discover" to={`/sejours/${program.ageGroup}`} aria-label={`Découvrir le séjour ${program.title}`}>Découvrir les activités <span aria-hidden="true">→</span></Link>
+                      </article>
+                    );
+                  })}
                 </div>
-                <span className="camp-program-discover">Découvrir les activités <span aria-hidden="true">→</span></span>
-              </Link>
+              </section>
             );
           })}
         </div>
         <div className="camp-filters" aria-label="Filtres des départs">
-          <label>
-            <span>Saison</span>
-            <select value={seasonFilter} onChange={(event) => setSeasonFilter(event.target.value as Season | "all")}>
-              <option value="all">Toutes les saisons</option><option value="summer">Été</option><option value="winter">Hiver</option>
-            </select>
-          </label>
           <label>
             <span>Groupe</span>
             <select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeGroup | "all")}>
@@ -509,7 +522,7 @@ function HomePage() {
               {programs.map((program) => <option key={program.ageGroup} value={program.ageGroup}>{program.title}</option>)}
             </select>
           </label>
-          <p role="status">{loading ? "Chargement des départs…" : error || `${filteredSessions.length} départ(s) disponible(s)`}</p>
+          <p role="status">{loading ? "Chargement des départs…" : error || `${filteredSessions.length} créneau(x) disponible(s)`}</p>
         </div>
         <p className="camp-freshness">Les places restantes sont actualisées toutes les 15 secondes et toujours revérifiées au moment de l'inscription.</p>
       </section>
@@ -601,23 +614,33 @@ function ProgramPage() {
           {error && <p className="camp-form-error" role="alert">{error}</p>}
           {!loading && !error && departures.length === 0 && <p className="camp-no-departure">Aucun départ ouvert à l'inscription pour le moment.</p>}
           <div className="camp-program-departures">
-            {departures.map((session) => (
-              <article className="camp-program-departure" key={session.id}>
-                <div>
-                  <span className="camp-program-season">{seasonName[session.season]}</span>
-                  <h3>{session.title}</h3>
-                  <p>{formatDate(session.startDate)} – {formatDate(session.endDate)} · {session.durationDays} jours</p>
-                  <strong className={session.remainingPlaces === 0 ? "camp-full-label" : ""}>
-                    {session.remainingPlaces} place(s) restante(s)
-                  </strong>
-                  {session.description && <p>{session.description}</p>}
-                  {session.activities && <p>Activités prévues : {session.activities}</p>}
-                </div>
-                {session.remainingPlaces > 0
-                  ? <Link className="camp-button camp-button-primary" to={`/colonies/${session.id}/inscription`}>Réserver</Link>
-                  : <span className="camp-full-label">Complet</span>}
-              </article>
-            ))}
+            {seasonSections.map(({ season, title }) => {
+              const seasonDepartures = departures.filter((session) => session.season === season);
+              if (!seasonDepartures.length) return null;
+              return (
+                <details className="camp-program-season-menu" key={season}>
+                  <summary>{title} · {seasonDepartures.length} créneau(x)</summary>
+                  <div className="camp-program-season-list">
+                    {seasonDepartures.map((session) => (
+                      <article className="camp-program-departure" key={session.id}>
+                        <div>
+                          <h3>{session.title}</h3>
+                          <p>{formatDate(session.startDate)} – {formatDate(session.endDate)} · {session.durationDays} jours</p>
+                          <strong className={session.remainingPlaces === 0 ? "camp-full-label" : ""}>
+                            {session.remainingPlaces} place(s) restante(s)
+                          </strong>
+                          {session.description && <p>{session.description}</p>}
+                          {session.activities && <p>Activités prévues : {session.activities}</p>}
+                        </div>
+                        {session.remainingPlaces > 0
+                          ? <Link className="camp-button camp-button-primary" to={`/colonies/${session.id}/inscription`}>Réserver</Link>
+                          : <span className="camp-full-label">Complet</span>}
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              );
+            })}
           </div>
           {user?.role === "admin" && <Link className="camp-program-admin-link" to="/organisateur">Gérer les départs et inscriptions</Link>}
           <p className="camp-program-login-note">La connexion est demandée avant de finaliser une réservation. Une demande reste en attente jusqu'à sa validation par l'organisateur.</p>

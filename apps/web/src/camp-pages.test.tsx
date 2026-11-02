@@ -80,15 +80,18 @@ describe("application Alpes Camp", () => {
     mockApi();
     render(<BrowserRouter><CampApp /></BrowserRouter>);
     expect(await screen.findByRole("heading", { name: /Le grand air/i })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Les Petits" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Les Moyens" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Les Ados" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Adultes & Confirmés" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Séjours d'hiver" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Séjours d'été" })).toBeTruthy();
+    expect(screen.getAllByRole("heading", { name: "Les Petits" })).toHaveLength(2);
+    expect(screen.getAllByRole("heading", { name: "Les Moyens" })).toHaveLength(2);
+    expect(screen.getAllByRole("heading", { name: "Les Ados" })).toHaveLength(2);
+    expect(screen.getAllByRole("heading", { name: "Adultes & Confirmés" })).toHaveLength(2);
     expect(screen.getByRole("img", { name: /vallée alpine.*été/i })).toBeTruthy();
     expect(screen.getByAltText("Deux enfants jouent au football en plein air.")).toBeTruthy();
     expect(document.querySelector(".camp-hero-stamp")).toBeNull();
     expect(screen.queryByText("20 places maximum par départ")).toBeNull();
     expect(await screen.findByText("Colonie des Petits")).toBeTruthy();
+    fireEvent.click([...document.querySelectorAll(".camp-departure-menu summary")].find((summary) => summary.textContent === "Voir les créneaux (1)")!);
     expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
     expect(screen.queryByText("Domaine des Cèdres")).toBeNull();
   });
@@ -97,7 +100,7 @@ describe("application Alpes Camp", () => {
     mockApi();
     render(<BrowserRouter><CampApp /></BrowserRouter>);
     await screen.findByText("Colonie des Petits");
-    fireEvent.click(screen.getByRole("link", { name: "Découvrir le séjour Les Petits" }));
+    fireEvent.click(screen.getAllByRole("link", { name: "Découvrir le séjour Les Petits" })[0]!);
 
     expect(await screen.findByRole("heading", { name: "Les Petits" })).toBeTruthy();
     expect(screen.getByText("« Premiers pas éco-aventuriers »")).toBeTruthy();
@@ -105,6 +108,7 @@ describe("application Alpes Camp", () => {
     expect(screen.getByRole("heading", { name: "Petits gardiens de la montagne" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "Un groupe de bouquetins évolue sur une crête rocheuse des Alpes." })).toBeTruthy();
     expect(document.querySelectorAll(".camp-activity-photo a")).toHaveLength(3);
+    fireEvent.click([...document.querySelectorAll(".camp-program-season-menu summary")].find((summary) => summary.textContent?.includes("Séjours d'été"))!);
     expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
     fireEvent.click(screen.getByRole("link", { name: "Réserver" }));
     expect(await screen.findByRole("heading", { name: "Connexion" })).toBeTruthy();
@@ -169,6 +173,7 @@ describe("application Alpes Camp", () => {
     render(<BrowserRouter><CampApp /></BrowserRouter>);
 
     expect(await screen.findByRole("heading", { name: "Réserver ce séjour" })).toBeTruthy();
+    fireEvent.click([...document.querySelectorAll(".camp-program-season-menu summary")].find((summary) => summary.textContent?.includes("Séjours d'été"))!);
     expect(screen.getByText("Colonie des Petits")).toBeTruthy();
     expect(screen.getByText("Colonie des Petits — créneau de janvier")).toBeTruthy();
     expect(screen.getByText("18 place(s) restante(s)")).toBeTruthy();
