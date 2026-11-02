@@ -30,6 +30,7 @@ Les rôles sont `customer` et `admin`. L'inscription publique ne permet pas de c
 |---|---|---|---|
 | `POST` | `/api/camp-sessions/:id/enrollments` | Client | Inscrit de 1 à 20 participants à un départ publié |
 | `GET` | `/api/camp-enrollments/mine` | Client | Retourne uniquement les inscriptions du client connecté |
+| `POST` | `/api/camp-enrollments/:id/cancel` | Client propriétaire | Annule une réservation active avec un motif obligatoire (1 à 1 000 caractères) |
 
 Exemple de demande :
 
@@ -54,6 +55,8 @@ Le consentement doit être `true` et son horodatage/version sont enregistrés. E
 Ces données privées sont conservées jusqu'à la date de fin du séjour incluse. Après cette date, l'API ne les renvoie plus et les efface de la base au démarrage puis toutes les 15 minutes. L'effacement du champ privé retire aussi les demandes particulières, car elles partagent ce champ ; l'identité, la date de naissance et l'historique de l'inscription ne sont pas supprimés par ce traitement.
 
 La demande est atomique : une transaction crée l'inscription et tous ses participants. Si le départ est fermé, si les places manquent ou si un participant est invalide, aucune inscription partielle n'est conservée. Les inscriptions `pending` et `confirmed` consomment des places. L'insertion incrémente un compteur sous verrou PostgreSQL et un trigger refuse toute place au-delà de 20. L'annulation libère les places dans la même transaction que le changement d'état.
+
+Le motif d'annulation est conservé sur l'inscription et affiché au client et à l'organisateur. Une réservation déjà annulée ne peut pas être annulée une seconde fois.
 
 ## Administration organisateur
 

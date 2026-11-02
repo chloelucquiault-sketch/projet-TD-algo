@@ -58,6 +58,7 @@ type Enrollment = {
   id: string;
   status: "pending" | "confirmed" | "cancelled";
   adminNote: string | null;
+  cancellationReason: string | null;
   createdAt: string;
   processedAt: string | null;
   consentRecordedAt: string;
@@ -823,10 +824,11 @@ function EnrollmentPage() {
   );
 }
 
-function EnrollmentCard({ enrollment, admin = false, onUpdate }: {
+function EnrollmentCard({ enrollment, admin = false, onUpdate, onRequestCancel }: {
   enrollment: Enrollment;
   admin?: boolean;
   onUpdate?: (id: string, status: "confirmed" | "cancelled") => void;
+  onRequestCancel?: (enrollment: Enrollment) => void;
 }) {
   return (
     <article className="camp-enrollment-card">
@@ -848,6 +850,12 @@ function EnrollmentCard({ enrollment, admin = false, onUpdate }: {
         ))}
       </div>
       {enrollment.adminNote && <p className="camp-admin-note"><b>Note de l'organisateur :</b> {enrollment.adminNote}</p>}
+      {enrollment.cancellationReason && <p className="camp-cancellation-reason"><b>Motif d'annulation :</b> {enrollment.cancellationReason}</p>}
+      {!admin && enrollment.status !== "cancelled" && onRequestCancel && (
+        <div className="camp-admin-actions">
+          <button className="camp-button camp-button-outline" onClick={() => onRequestCancel(enrollment)}>Annuler ma réservation</button>
+        </div>
+      )}
       {admin && enrollment.status === "pending" && onUpdate && (
         <div className="camp-admin-actions">
           <button className="camp-button camp-button-primary" onClick={() => onUpdate(enrollment.id, "confirmed")}>Confirmer</button>
@@ -864,6 +872,11 @@ function CustomerPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [cancellationTarget, setCancellationTarget] = useState<Enrollment | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationBusy, setCancellationBusy] = useState(false);
+  const [cancellationError, setCancellationError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -881,6 +894,31 @@ function CustomerPage() {
     return () => window.clearInterval(timer);
   }, [user]);
 
+  async function cancelEnrollment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!cancellationTarget) return;
+    setCancellationBusy(true);
+    setCancellationError("");
+    try {
+      const { enrollment: cancelled } = await api<{
+        enrollment: { id: string; status: "cancelled"; cancellationReason: string };
+      }>(`/api/camp-enrollments/${cancellationTarget.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason: cancellationReason }),
+      });
+      setEnrollments((current) => current.map((enrollment) => enrollment.id === cancelled.id
+        ? { ...enrollment, status: cancelled.status, cancellationReason: cancelled.cancellationReason }
+        : enrollment));
+      setCancellationTarget(null);
+      setCancellationReason("");
+      setNotice("Votre réservation a été annulée. Le motif a été transmis à l'organisateur.");
+    } catch (reason) {
+      setCancellationError(reason instanceof Error ? reason.message : "La réservation n'a pas pu être annulée.");
+    } finally {
+      setCancellationBusy(false);
+    }
+  }
+
   if (authLoading) return <LoadingPage />;
   if (!user) return <Navigate to={`/connexion?retour=${encodeURIComponent("/mes-inscriptions")}`} replace />;
   if (user.role === "admin") return <Navigate to="/organisateur" replace />;
@@ -890,10 +928,41 @@ function CustomerPage() {
       <span className="camp-eyebrow">ESPACE FAMILLE</span>
       <h1>Mes inscriptions</h1>
       {searchParams.get("envoyee") && <p className="camp-success" role="status">Votre demande a bien été envoyée. Elle est en attente de traitement.</p>}
+      {notice && <p className="camp-success" role="status">{notice}</p>}
       {loading && <p role="status">Chargement de vos inscriptions…</p>}
       {error && <p className="camp-form-error" role="alert">{error}</p>}
       {!loading && !error && !enrollments.length && <div className="camp-empty"><p>Vous n'avez pas encore d'inscription.</p><Link className="camp-button camp-button-primary" to="/">Découvrir les séjours</Link></div>}
-      <div className="camp-enrollment-list">{enrollments.map((enrollment) => <EnrollmentCard key={enrollment.id} enrollment={enrollment} />)}</div>
+      <div className="camp-enrollment-list">{enrollments.map((enrollment) => (
+        <EnrollmentCard key={enrollment.id} enrollment={enrollment} onRequestCancel={(target) => {
+          setCancellationTarget(target);
+          setCancellationReason("");
+          setCancellationError("");
+        }} />
+      ))}</div>
+      {cancellationTarget && (
+        <div className="camp-dialog-backdrop">
+          <section className="camp-cancellation-dialog" role="dialog" aria-modal="true" aria-labelledby="camp-cancellation-title">
+            <h2 id="camp-cancellation-title">Annuler ma réservation</h2>
+            <p>Indiquez à l'organisateur la raison de l'annulation de votre séjour.</p>
+            <form className="camp-form" onSubmit={cancelEnrollment}>
+              <label htmlFor="camp-cancellation-reason">Motif de l'annulation</label>
+              <textarea
+                id="camp-cancellation-reason"
+                required
+                maxLength={1000}
+                value={cancellationReason}
+                onChange={(event) => setCancellationReason(event.target.value)}
+                autoFocus
+              />
+              {cancellationError && <p className="camp-form-error" role="alert">{cancellationError}</p>}
+              <div className="camp-admin-actions">
+                <button className="camp-button camp-button-outline" type="button" disabled={cancellationBusy} onClick={() => setCancellationTarget(null)}>Retour</button>
+                <button className="camp-button camp-button-primary" type="submit" disabled={cancellationBusy}>{cancellationBusy ? "Annulation…" : "Confirmer l'annulation"}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       <Footer />
     </main>
   );

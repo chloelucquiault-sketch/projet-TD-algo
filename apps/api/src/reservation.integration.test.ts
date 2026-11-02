@@ -512,12 +512,27 @@ suite("API de réservation avec PostgreSQL", () => {
     expect(adminEnrollments.status).toBe(200);
     expect(await adminEnrollments.text()).toContain("Consigne confidentielle");
 
-    const cancel = await fetch(`${baseUrl}/api/admin/camp-enrollments/${successfulEnrollmentId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json", cookie: adminCookie },
-      body: JSON.stringify({ status: "cancelled" }),
+    const cancel = await fetch(`${baseUrl}/api/camp-enrollments/${successfulEnrollmentId}/cancel`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: registeredCookie },
+      body: JSON.stringify({ reason: "Changement de programme familial" }),
     });
     expect(cancel.status).toBe(200);
+    expect(await cancel.json()).toMatchObject({
+      enrollment: {
+        id: successfulEnrollmentId,
+        status: "cancelled",
+        cancellationReason: "Changement de programme familial",
+      },
+    });
+    const savedCancellation = await pool.query<{ cancellation_reason: string; status: string }>(
+      "SELECT cancellation_reason, status FROM camp_enrollments WHERE id = $1",
+      [successfulEnrollmentId],
+    );
+    expect(savedCancellation.rows[0]).toEqual({
+      cancellation_reason: "Changement de programme familial",
+      status: "cancelled",
+    });
     const remaining = await pool.query<{ reserved_places: number }>(
       "SELECT reserved_places FROM camp_sessions WHERE id = $1",
       [campSessionId],

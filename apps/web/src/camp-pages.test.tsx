@@ -34,12 +34,36 @@ const secondCampSession = {
   reservedPlaces: 7,
   remainingPlaces: 13,
 };
+const activeEnrollment = {
+  id: "enrollment-id",
+  status: "pending" as const,
+  adminNote: null,
+  cancellationReason: null,
+  createdAt: "2030-01-01T10:00:00.000Z",
+  processedAt: null,
+  consentRecordedAt: "2030-01-01T10:00:00.000Z",
+  session: {
+    id: sessionId,
+    title: campSession.title,
+    season: campSession.season,
+    ageGroup: campSession.ageGroup,
+    startDate: campSession.startDate,
+    endDate: campSession.endDate,
+  },
+  participants: [{
+    id: "participant-id",
+    firstName: "Lou",
+    lastName: "Martin",
+    birthDate: "2020-06-01",
+  }],
+};
 
 function mockApi(
   signedIn = false,
   role: "customer" | "admin" = "customer",
   expireOnEnrollment = false,
   multipleSessions = false,
+  enrollments: typeof activeEnrollment[] = [],
 ) {
   let authenticated = signedIn;
   const signedInUser = { ...customer, role };
@@ -60,7 +84,16 @@ function mockApi(
         body = { enrollment: { id: "enrollment-id", status: "pending" } };
         status = 201;
       }
-    } else if (path === "/api/camp-enrollments/mine") body = { enrollments: [] };
+    } else if (path === "/api/camp-enrollments/mine") body = { enrollments };
+    else if (path === `/api/camp-enrollments/${activeEnrollment.id}/cancel` && init?.method === "POST") {
+      body = {
+        enrollment: {
+          id: activeEnrollment.id,
+          status: "cancelled",
+          cancellationReason: JSON.parse(String(init.body)).reason,
+        },
+      };
+    }
     else {
       body = { error: { message: "Route de test inconnue." } };
       status = 404;
@@ -165,6 +198,27 @@ describe("application Alpes Camp", () => {
         participants: [{ firstName: "Lou", lastName: "Martin", birthDate: "2020-06-01" }],
       });
     });
+  });
+
+  it("annule une réservation avec un motif transmis à l'organisateur", async () => {
+    mockApi(true, "customer", false, false, [activeEnrollment]);
+    window.history.replaceState({}, "", "/mes-inscriptions");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Annuler ma réservation" }));
+    expect(await screen.findByRole("dialog", { name: "Annuler ma réservation" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Motif de l'annulation"), {
+      target: { value: "Changement de programme familial" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmer l'annulation" }));
+
+    expect(await screen.findByText("Votre réservation a été annulée. Le motif a été transmis à l'organisateur.")).toBeTruthy();
+    expect(screen.getByText("Annulée")).toBeTruthy();
+    expect(screen.getByText("Changement de programme familial")).toBeTruthy();
+    const request = vi.mocked(fetch).mock.calls.find(([path]) => String(path).endsWith("/cancel"));
+    expect(request?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(request?.[1]?.body))).toEqual({ reason: "Changement de programme familial" });
+    expect(screen.queryByRole("button", { name: "Annuler ma réservation" })).toBeNull();
   });
 
   it("affiche plusieurs créneaux et les places restantes pour chaque départ", async () => {

@@ -70,7 +70,7 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - Inscription réservée aux comptes connectés, avec un formulaire permettant d'inscrire une fratrie.
 - Informations de naissance et consignes pratiques ; les données de santé sont chiffrées en mode normal et non chiffrées dans la démonstration fictive.
 - Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
-- Espace client pour consulter uniquement ses propres inscriptions et leurs détails.
+- Espace client pour consulter uniquement ses propres inscriptions et leurs détails, et annuler une réservation active en transmettant un motif à l'organisateur.
 - Espace organisateur protégé pour créer et publier les départs, voir les inscriptions et les confirmer ou annuler.
 - Vérification de la jauge côté serveur et compteur PostgreSQL protégé contre les inscriptions concurrentes.
 - Authentification par session PostgreSQL et cookie HTTP-only. L'inscription publique crée uniquement des comptes clients ; l'organisateur est créé par une commande locale.
@@ -81,7 +81,7 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - La jauge de 20 est fixe par départ. Les participants de demandes **en attente et confirmées** sont comptabilisés ; l'annulation d'une demande libère ses places.
 - Les âges affichés sont des recommandations. Une inscription hors tranche est possible et signalée à l'organisateur pour discussion ; le système ne décide pas d'une dérogation.
 - Les activités et descriptions des départs réels sont saisies par l'organisateur ; les départs de démonstration utilisent des exemples fictifs.
-- Aucun calendrier ou programme réel, lieu précis, prix, paiement, annulation côté famille, remboursement ou règle de répartition n'est configuré ou simulé.
+- Aucun calendrier ou programme réel, lieu précis, prix, paiement, remboursement ou règle de répartition n'est configuré ou simulé.
 - Aucun paiement n'est collecté.
 - Les prochains départs réels doivent être validés par l'organisateur. Un départ ne peut plus changer de dates, saison ou groupe après la création d'une inscription.
 
@@ -107,7 +107,7 @@ La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalité
 - `apps/api` contient l'API, la couche de persistance et les migrations.
 - `docs/API.md` décrit les routes principales.
 
-La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
+La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains ; `013_camp_cancellation_reason.sql` ajoute le motif transmis lors d'une annulation par le client. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
 
 ## Démarrage local (Windows / PowerShell)
 

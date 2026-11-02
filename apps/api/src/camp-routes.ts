@@ -97,6 +97,7 @@ async function enrollmentRows(where: string, values: unknown[] = []) {
     status: "pending" | "confirmed" | "cancelled";
     health_data_consent_at: Date;
     admin_note: string | null;
+    cancellation_reason: string | null;
     created_at: Date;
     processed_at: Date | null;
     processor_name: string | null;
@@ -109,7 +110,7 @@ async function enrollmentRows(where: string, values: unknown[] = []) {
     end_date: string | Date;
   }>(
     `SELECT e.id, e.camp_session_id, e.customer_user_id, e.status,
-            e.health_data_consent_at, e.admin_note, e.created_at, e.processed_at,
+            e.health_data_consent_at, e.admin_note, e.cancellation_reason, e.created_at, e.processed_at,
             processor.full_name AS processor_name,
             customer.full_name AS customer_name, customer.email AS customer_email,
             s.title, s.season, s.age_group, s.start_date, s.end_date
@@ -228,6 +229,7 @@ router.get("/api/camp-enrollments/mine", requireRole("customer"), async (request
       id: row.id,
       status: row.status,
       adminNote: row.admin_note,
+      cancellationReason: row.cancellation_reason,
       createdAt: row.created_at,
       processedAt: row.processed_at,
       consentRecordedAt: row.health_data_consent_at,
@@ -242,6 +244,40 @@ router.get("/api/camp-enrollments/mine", requireRole("customer"), async (request
       participants: participants.get(row.id) ?? [],
     })),
   });
+});
+
+router.post("/api/camp-enrollments/:id/cancel", requireRole("customer"), async (request, response) => {
+  const enrollmentId = idSchema.parse(request.params.id);
+  const { reason } = z.object({
+    reason: z.string().trim().min(1, "Le motif de l'annulation est obligatoire.").max(1000),
+  }).parse(request.body);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query<{ status: "pending" | "confirmed" | "cancelled" }>(
+      `SELECT status FROM camp_enrollments
+       WHERE id = $1 AND customer_user_id = $2
+       FOR UPDATE`,
+      [enrollmentId, request.user!.id],
+    );
+    if (!existing.rowCount) throw new HttpError(404, "Cette inscription n'existe pas.");
+    if (existing.rows[0]!.status === "cancelled") {
+      throw new HttpError(409, "Cette réservation est déjà annulée.");
+    }
+    await client.query(
+      `UPDATE camp_enrollments
+       SET status = 'cancelled', cancellation_reason = $2, processed_at = NOW(), updated_at = NOW()
+       WHERE id = $1`,
+      [enrollmentId, reason],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  response.json({ enrollment: { id: enrollmentId, status: "cancelled", cancellationReason: reason } });
 });
 
 router.get("/api/admin/camp-sessions", requireRole("admin"), async (_request, response) => {
@@ -382,6 +418,7 @@ router.get("/api/admin/camp-enrollments", requireRole("admin"), async (_request,
       id: row.id,
       status: row.status,
       adminNote: row.admin_note,
+      cancellationReason: row.cancellation_reason,
       createdAt: row.created_at,
       processedAt: row.processed_at,
       processedBy: row.processor_name,

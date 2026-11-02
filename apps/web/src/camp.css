@@ -249,7 +249,13 @@ body { min-width: 320px; }
 .camp-participant-summary p { color: #67646b; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .camp-age-alert { color: #984b50 !important; font-weight: 700; }
 .camp-admin-note { padding: 11px; background: #f5eee7; }
+.camp-cancellation-reason { padding: 11px; border-left: 3px solid #a55059; background: #f9eaea; }
 .camp-admin-actions { display: flex; gap: 10px; margin-top: 14px; }
+.camp-dialog-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgb(35 39 34 / 58%); }
+.camp-cancellation-dialog { width: min(100%, 500px); padding: 25px; background: white; box-shadow: 0 20px 60px rgb(0 0 0 / 25%); }
+.camp-cancellation-dialog h2 { margin: 0 0 10px; color: #3d5140; font: 700 22px "Manrope", sans-serif; }
+.camp-cancellation-dialog > p { margin-bottom: 18px; color: #67646b; font-size: 12px; line-height: 1.6; }
+.camp-cancellation-dialog .camp-admin-actions { justify-content: end; }
 .camp-admin-section { margin: 36px 0; padding: 22px; border: 1px solid #ece3dc; background: #fff; }
 .camp-admin-section > h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 24px; }
 .camp-admin-section > h2 span { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #f4ebe0; color: #a55059; font: 700 11px "DM Sans", sans-serif; }
