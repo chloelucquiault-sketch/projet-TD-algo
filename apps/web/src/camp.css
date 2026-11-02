@@ -181,7 +181,6 @@ body { min-width: 320px; }
 .camp-program-admin-link { display: inline-block; margin-top: 16px; color: #4e6848; font-size: 11px; font-weight: 700; text-decoration: underline; }
 .camp-program-login-note { margin: 15px 0 0; color: #676a5f; font-size: 10px; line-height: 1.65; }
 .camp-demo-notice { margin: 14px 0; padding: 12px 14px; border-left: 3px solid #9a6b3f; background: #f7f1e8; color: #5a4837; font-size: 12px; line-height: 1.6; }
-.camp-demo-banner { margin: 0; padding: 10px 16px; background: #f1e3cf; color: #55432e; font-size: 12px; font-weight: 700; text-align: center; }
 .camp-filters { display: flex; align-items: end; gap: 12px; margin-top: 24px; padding: 16px; background: #f8f3ee; }
 .camp-filters label, .camp-form label { display: grid; gap: 7px; color: #55545d; font-size: 11px; font-weight: 650; }
 .camp-filters label > span { color: #827b79; font-size: 9px; }

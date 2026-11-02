@@ -734,6 +734,7 @@ function AuthPage({ mode }: { mode: "login" | "register" }) {
         <span className="camp-eyebrow">{mode === "login" ? "HEUREUX DE VOUS REVOIR" : "VOTRE PROCHAINE AVENTURE"}</span>
         <h1>{mode === "login" ? "Connexion" : "Créer un compte"}</h1>
         <p>{mode === "login" ? "Connectez-vous pour poursuivre l'inscription." : "Créez un compte parent ou participant pour réserver."}</p>
+        {demoMode && <p className="camp-demo-notice" role="note">Site de démonstration : utilise uniquement des informations fictives, y compris pour ton adresse e-mail et ton mot de passe.</p>}
         <form className="camp-form" onSubmit={submit}>
           {mode === "register" && <label>Nom complet<input name="fullName" autoComplete="name" required minLength={2} maxLength={120} /></label>}
           <label>Adresse e-mail<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
@@ -1543,7 +1544,6 @@ export function CampApp() {
   return (
     <AuthProvider>
       <div className="camp-app">
-        {demoMode && <p className="camp-demo-banner" role="note">Démo uniquement : n'utilisez aucune vraie information personnelle, médicale ou de connexion.</p>}
         <Header />
         <Routes>
           <Route path="/" element={<HomePage />} />

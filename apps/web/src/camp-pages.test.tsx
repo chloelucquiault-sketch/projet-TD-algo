@@ -437,6 +437,7 @@ describe("application Alpes Camp", () => {
     render(<BrowserRouter><CampApp /></BrowserRouter>);
 
     expect(await screen.findByText("Merci de contacter l'organisateur pour tout oubli de mot de passe.")).toBeTruthy();
+    expect(document.querySelector(".camp-demo-banner")).toBeNull();
   });
 
   it("renvoie vers la connexion si la session expire lors de l'envoi", async () => {
