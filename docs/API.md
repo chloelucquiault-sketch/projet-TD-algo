@@ -31,7 +31,8 @@ Les rôles sont `customer` et `admin`. L'inscription publique ne permet pas de c
 | `POST` | `/api/camp-sessions/:id/enrollments` | Client | Inscrit de 1 à 20 participants à un départ publié |
 | `GET` | `/api/camp-enrollments/mine` | Client | Retourne uniquement les inscriptions du client connecté |
 | `POST` | `/api/camp-enrollments/:id/cancel` | Client propriétaire | Annule une réservation active avec un motif obligatoire (1 à 1 000 caractères) |
-| `POST` | `/api/contact-messages` | Client | Envoie un message (1 à 3 000 caractères) à la boîte de réception organisateur |
+| `GET` | `/api/contact-messages/mine` | Client | Retourne le fil de discussion du client connecté |
+| `POST` | `/api/contact-messages` | Client | Envoie ou ajoute une réponse (1 à 3 000 caractères) au fil de discussion |
 
 Exemple de demande :
 
@@ -70,7 +71,13 @@ Toutes les routes de ce tableau nécessitent le rôle `admin`.
 | `PATCH` | `/api/admin/camp-sessions/:id` | Modifie le départ ou ouvre/ferme les inscriptions |
 | `GET` | `/api/admin/camp-enrollments` | Liste les demandes et les informations privées des participants |
 | `PATCH` | `/api/admin/camp-enrollments/:id` | Confirme ou annule une demande en attente |
-| `GET` | `/api/admin/contact-messages` | Liste les messages d'aide et de contact avec les coordonnées de leur auteur |
+| `PATCH` | `/api/admin/camp-enrollments/:id/note` | Enregistre une note de suivi interne (1 000 caractères maximum), jamais exposée au client |
+| `DELETE` | `/api/admin/camp-sessions/:id` | Supprime un départ uniquement s'il ne comporte aucune inscription |
+| `GET` | `/api/admin/contact-messages` | Liste les conversations, leur état de lecture et les coordonnées du client |
+| `POST` | `/api/admin/contact-messages/:id/replies` | Ajoute une réponse au fil de discussion du client |
+| `PATCH` | `/api/admin/contact-messages/:id/read` | Marque une conversation comme lue ou non lue avec `{ "isRead": true }` |
+
+L'espace organisateur classe les départs par saison et tranche d'âge, et permet de rechercher/filtrer les inscriptions puis d'exporter les résultats visibles en CSV. Les conversations sont intégrées au site : les réponses sont consultables dans la page « Aide et contact » du client ; aucune notification e-mail automatique n'est envoyée.
 
 Exemple de création d'un départ :
 

@@ -73,7 +73,8 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
 - Espace client pour consulter uniquement ses propres inscriptions et leurs détails, et annuler une réservation active en transmettant un motif à l'organisateur.
 - Formulaire « Aide et contact » pour envoyer un message à l'organisateur ; les messages et coordonnées sont consultables dans sa boîte de réception privée.
-- Espace organisateur protégé pour créer et publier les départs, voir les inscriptions et les confirmer ou annuler.
+- Fil de discussion intégré à l'espace client et à la boîte organisateur, avec réponses depuis le site et indicateur lu/non lu (sans e-mail automatique).
+- Espace organisateur protégé pour créer, modifier et classer les départs, supprimer ceux sans inscription, filtrer/rechercher et exporter les demandes, ajouter des notes internes et traiter les réservations.
 - Vérification de la jauge côté serveur et compteur PostgreSQL protégé contre les inscriptions concurrentes.
 - Authentification par session PostgreSQL et cookie HTTP-only. L'inscription publique crée uniquement des comptes clients ; l'organisateur est créé par une commande locale.
 
@@ -109,7 +110,7 @@ La durée et l'effacement sont ainsi mis en œuvre techniquement ; les modalité
 - `apps/api` contient l'API, la couche de persistance et les migrations.
 - `docs/API.md` décrit les routes principales.
 
-La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains ; `013_camp_cancellation_reason.sql` ajoute le motif transmis lors d'une annulation par le client ; `014_contact_messages.sql` crée la boîte de réception des messages client pour l'organisateur. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
+La migration `004_alpine_camps.sql` ajoute les tables des départs, inscriptions et participants. La migration `006_camp_season_windows.sql` impose les périodes saisonnières au niveau PostgreSQL ; `007_camp_private_data_retention.sql` prépare l'effacement des informations privées après le séjour ; `008_remove_legacy_sports.sql` supprime les six sports de l'ancien projet et leurs associations aux terrains ; `013_camp_cancellation_reason.sql` ajoute le motif transmis lors d'une annulation par le client ; `014_contact_messages.sql` crée la boîte de réception des messages client ; `015_organizer_tools.sql` regroupe ces messages en conversations et ajoute les notes internes. Les anciennes tables de réservation restent en place, mais leurs données ne sont pas converties en inscriptions de colonie.
 
 ## Démarrage local (Windows / PowerShell)
 
@@ -170,6 +171,22 @@ Cette correction est temporaire pour le terminal courant. Pour la rendre permane
    ```
 
    Si PowerShell indique qu'un administrateur existe déjà, ne relance pas cette commande : utilise le compte existant. Après le démarrage du site, connecte-toi sur [http://localhost:5173/connexion](http://localhost:5173/connexion) avec ces identifiants ; le lien **Espace organisateur** apparaît dans la navigation.
+
+   Pour réinitialiser le mot de passe d'un administrateur déjà créé sur la base locale, utilise l'adresse du compte et un nouveau mot de passe d'au moins 12 caractères. Cette commande modifie uniquement le hash du compte administrateur correspondant ; elle ne crée pas de compte :
+
+   ```powershell
+   $env:ADMIN_EMAIL = "organisateur@exemple.fr"
+   $secure = Read-Host "Nouveau mot de passe (12 caractères minimum)" -AsSecureString
+   $env:ADMIN_PASSWORD = [System.Net.NetworkCredential]::new("", $secure).Password
+   try {
+       npm.cmd run admin:reset-password
+   } finally {
+       Remove-Item Env:ADMIN_EMAIL, Env:ADMIN_PASSWORD -ErrorAction SilentlyContinue
+       Remove-Variable secure -ErrorAction SilentlyContinue
+   }
+   ```
+
+   Vérifie que `DATABASE_URL` pointe bien vers la base locale avant de lancer la commande. Ne partage pas et n'enregistre pas le mot de passe dans le dépôt. La réinitialisation par e-mail n'est pas configurée.
 
 6. Lancer l'API et le frontend :
 

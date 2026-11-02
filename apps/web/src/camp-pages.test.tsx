@@ -39,6 +39,7 @@ const activeEnrollment = {
   status: "pending" as const,
   adminNote: null,
   cancellationReason: null,
+  internalNote: null,
   createdAt: "2030-01-01T10:00:00.000Z",
   processedAt: null,
   consentRecordedAt: "2030-01-01T10:00:00.000Z",
@@ -57,6 +58,17 @@ const activeEnrollment = {
     birthDate: "2020-06-01",
   }],
 };
+const organizerEnrollment = {
+  ...activeEnrollment,
+  customer: { id: customer.id, name: customer.fullName, email: customer.email },
+};
+type TestContactConversation = {
+  id: string;
+  isRead: boolean;
+  updatedAt: string;
+  customer: { name: string; email: string };
+  messages: { id: string; message: string; createdAt: string; senderRole: "customer" | "admin" }[];
+};
 
 function mockApi(
   signedIn = false,
@@ -64,10 +76,14 @@ function mockApi(
   expireOnEnrollment = false,
   multipleSessions = false,
   enrollments: typeof activeEnrollment[] = [],
-  contactMessages: { id: string; message: string; createdAt: string; customer: { name: string; email: string } }[] = [],
+  contactConversations: TestContactConversation[] = [],
+  organizerSessions: (typeof campSession & { hasEnrollments?: boolean })[] = [],
+  organizerEnrollments: typeof organizerEnrollment[] = [],
 ) {
   let authenticated = signedIn;
   const signedInUser = { ...customer, role };
+  let conversations = [...contactConversations];
+  let customerConversation = conversations.find((conversation) => conversation.customer.email === customer.email) ?? null;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
     let body: unknown;
@@ -87,11 +103,55 @@ function mockApi(
       }
     } else if (path === "/api/camp-enrollments/mine") body = { enrollments };
     else if (path === "/api/contact-messages" && init?.method === "POST") {
-      body = { message: { id: "contact-message-id", createdAt: "2030-01-02T10:00:00.000Z" } };
+      const submitted = JSON.parse(String(init.body)).message as string;
+      const createdAt = "2030-01-02T10:00:00.000Z";
+      customerConversation ??= {
+        id: "contact-thread-id",
+        isRead: false,
+        updatedAt: createdAt,
+        customer: { name: customer.fullName, email: customer.email },
+        messages: [],
+      };
+      customerConversation = {
+        ...customerConversation,
+        isRead: false,
+        updatedAt: createdAt,
+        messages: [...customerConversation.messages, {
+          id: "contact-message-id",
+          message: submitted,
+          createdAt,
+          senderRole: role === "admin" ? "admin" : "customer",
+        }],
+      };
+      conversations = [...conversations.filter((conversation) => conversation.id !== customerConversation!.id), customerConversation];
+      body = { message: { id: "contact-message-id", conversationId: "contact-thread-id", message: submitted, senderRole: "customer", createdAt } };
       status = 201;
-    } else if (path === "/api/admin/contact-messages") body = { messages: contactMessages };
-    else if (path === "/api/admin/camp-sessions") body = { sessions: [] };
-    else if (path === "/api/admin/camp-enrollments") body = { enrollments: [] };
+    } else if (path === "/api/contact-messages/mine") body = { conversation: customerConversation };
+    else if (path === "/api/admin/contact-messages") body = { conversations };
+    else if (path === "/api/admin/camp-sessions") body = { sessions: organizerSessions };
+    else if (path === "/api/admin/camp-enrollments") body = { enrollments: organizerEnrollments };
+    else if (path.match(/^\/api\/admin\/contact-messages\/[^/]+\/replies$/) && init?.method === "POST") {
+      const threadId = path.split("/")[4]!;
+      const submitted = JSON.parse(String(init.body)).message as string;
+      const createdAt = "2030-01-03T10:00:00.000Z";
+      conversations = conversations.map((conversation) => conversation.id === threadId ? {
+        ...conversation,
+        isRead: true,
+        updatedAt: createdAt,
+        messages: [...conversation.messages, { id: "reply-id", message: submitted, senderRole: "admin", createdAt }],
+      } : conversation);
+      body = { message: { id: "reply-id", message: submitted, senderRole: "admin", createdAt } };
+      status = 201;
+    } else if (path.match(/^\/api\/admin\/contact-messages\/[^/]+\/read$/) && init?.method === "PATCH") {
+      const threadId = path.split("/")[4]!;
+      const { isRead } = JSON.parse(String(init.body)) as { isRead: boolean };
+      conversations = conversations.map((conversation) => conversation.id === threadId ? { ...conversation, isRead } : conversation);
+      body = { conversation: { id: threadId, isRead } };
+    } else if (path.match(/^\/api\/admin\/camp-enrollments\/[^/]+\/note$/) && init?.method === "PATCH") {
+      body = { enrollment: { id: path.split("/")[4], internalNote: JSON.parse(String(init.body)).internalNote } };
+    } else if (path.match(/^\/api\/admin\/camp-sessions\/[^/]+$/) && init?.method === "DELETE") {
+      body = {};
+    }
     else if (path === `/api/camp-enrollments/${activeEnrollment.id}/cancel` && init?.method === "POST") {
       body = {
         enrollment: {
@@ -240,7 +300,8 @@ describe("application Alpes Camp", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Envoyer à l'organisateur" }));
 
-    expect(await screen.findByText("Votre message a bien été envoyé à l'organisateur.")).toBeTruthy();
+    expect(await screen.findByText(/Votre message a bien été envoyé/)).toBeTruthy();
+    expect(screen.getByText("Bonjour, pouvez-vous m'aider avec mon inscription ?")).toBeTruthy();
     const request = vi.mocked(fetch).mock.calls.find(([path]) => String(path) === "/api/contact-messages");
     expect(request?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({
@@ -250,10 +311,16 @@ describe("application Alpes Camp", () => {
 
   it("affiche les messages reçus dans la boîte de réception organisateur", async () => {
     mockApi(true, "admin", false, false, [], [{
-      id: "message-id",
-      message: "Question sur les dates du séjour.",
-      createdAt: "2030-01-02T10:00:00.000Z",
+      id: "thread-id",
+      isRead: false,
+      updatedAt: "2030-01-02T10:00:00.000Z",
       customer: { name: "Camille Martin", email: "parent@example.test" },
+      messages: [{
+        id: "message-id",
+        message: "Question sur les dates du séjour.",
+        createdAt: "2030-01-02T10:00:00.000Z",
+        senderRole: "customer",
+      }],
     }]);
     window.history.replaceState({}, "", "/organisateur");
     render(<BrowserRouter><CampApp /></BrowserRouter>);
@@ -261,6 +328,71 @@ describe("application Alpes Camp", () => {
     expect(await screen.findByRole("heading", { name: /Aide et contact/ })).toBeTruthy();
     expect(screen.getByText("Question sur les dates du séjour.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "parent@example.test" }).getAttribute("href")).toBe("mailto:parent@example.test");
+    fireEvent.click(screen.getByRole("button", { name: "Marquer comme lu" }));
+    fireEvent.change(screen.getByLabelText("Répondre au client"), { target: { value: "Bonjour Camille, nous sommes disponibles pour vous aider." } });
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer la réponse" }));
+    expect(await screen.findByText("Bonjour Camille, nous sommes disponibles pour vous aider.")).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith("/thread-id/read"))).toBe(true);
+    expect(vi.mocked(fetch).mock.calls.some(([path]) => String(path).endsWith("/thread-id/replies"))).toBe(true);
+  });
+
+  it("filtre les inscriptions et enregistre une note privée côté organisateur", async () => {
+    mockApi(true, "admin", false, false, [], [], [campSession], [organizerEnrollment]);
+    window.history.replaceState({}, "", "/organisateur");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByLabelText("Rechercher")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Rechercher"), { target: { value: "parent@example.test" } });
+    expect(screen.getByText("Camille Martin ·")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Note interne (visible uniquement par l'organisateur)"), {
+      target: { value: "Rappeler au sujet du transport." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer la note interne" }));
+    await screen.findByRole("status");
+    const noteRequest = vi.mocked(fetch).mock.calls.find(([path]) => String(path).endsWith("/enrollment-id/note"));
+    expect(noteRequest?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(noteRequest?.[1]?.body))).toEqual({ internalNote: "Rappeler au sujet du transport." });
+    expect(screen.getByText(/visible uniquement par l'organisateur/)).toBeTruthy();
+  });
+
+  it("regroupe les départs par saison et groupe et permet de supprimer un départ vide", async () => {
+    mockApi(true, "admin", false, false, [], [], [{ ...campSession, hasEnrollments: false }]);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    window.history.replaceState({}, "", "/organisateur");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    await screen.findByText("☀️ Séjours d'été");
+    fireEvent.click(document.querySelector(".camp-session-season-group summary")!);
+    expect(screen.getByText("Les Petits · 1 départ(s)")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    expect(vi.mocked(fetch).mock.calls.some(([path, init]) => String(path).endsWith(`/${sessionId}`) && init?.method === "DELETE")).toBe(true);
+    expect(await screen.findByText("Le départ a été supprimé.")).toBeTruthy();
+    vi.mocked(window.confirm).mockRestore();
+  });
+
+  it("affiche et envoie les réponses du client dans le fil de discussion", async () => {
+    const conversation: TestContactConversation = {
+      id: "thread-id",
+      isRead: true,
+      updatedAt: "2030-01-02T10:00:00.000Z",
+      customer: { name: customer.fullName, email: customer.email },
+      messages: [{
+        id: "admin-message",
+        message: "Bonjour, votre départ est bien confirmé.",
+        createdAt: "2030-01-02T10:00:00.000Z",
+        senderRole: "admin",
+      }],
+    };
+    mockApi(true, "customer", false, false, [], [conversation]);
+    window.history.replaceState({}, "", "/aide-et-contact");
+    render(<BrowserRouter><CampApp /></BrowserRouter>);
+
+    expect(await screen.findByText("Bonjour, votre départ est bien confirmé.")).toBeTruthy();
+    expect(screen.getByText("Organisateur")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Répondre à l'organisateur"), { target: { value: "Merci pour votre retour." } });
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer à l'organisateur" }));
+    expect(await screen.findByText("Merci pour votre retour.")).toBeTruthy();
   });
 
   it("annule une réservation avec un motif transmis à l'organisateur", async () => {

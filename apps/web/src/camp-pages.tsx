@@ -59,6 +59,7 @@ type Enrollment = {
   status: "pending" | "confirmed" | "cancelled";
   adminNote: string | null;
   cancellationReason: string | null;
+  internalNote?: string | null;
   createdAt: string;
   processedAt: string | null;
   consentRecordedAt: string;
@@ -70,7 +71,14 @@ type ContactMessage = {
   id: string;
   message: string;
   createdAt: string;
+  senderRole: "customer" | "admin";
+};
+type ContactConversation = {
+  id: string;
+  isRead: boolean;
+  updatedAt: string;
   customer: { name: string; email: string };
+  messages: ContactMessage[];
 };
 
 const programs: CampProgram[] = [
@@ -862,11 +870,14 @@ function EnrollmentPage() {
   );
 }
 
-function EnrollmentCard({ enrollment, admin = false, onUpdate, onRequestCancel }: {
+function EnrollmentCard({ enrollment, admin = false, onUpdate, onRequestCancel, onSaveNote, onNoteChange, noteSaving = false }: {
   enrollment: Enrollment;
   admin?: boolean;
   onUpdate?: (id: string, status: "confirmed" | "cancelled") => void;
   onRequestCancel?: (enrollment: Enrollment) => void;
+  onSaveNote?: (id: string) => void;
+  onNoteChange?: (id: string, note: string) => void;
+  noteSaving?: boolean;
 }) {
   return (
     <article className="camp-enrollment-card">
@@ -889,6 +900,23 @@ function EnrollmentCard({ enrollment, admin = false, onUpdate, onRequestCancel }
       </div>
       {enrollment.adminNote && <p className="camp-admin-note"><b>Note de l'organisateur :</b> {enrollment.adminNote}</p>}
       {enrollment.cancellationReason && <p className="camp-cancellation-reason"><b>Motif d'annulation :</b> {enrollment.cancellationReason}</p>}
+      {admin && (
+        <form className="camp-form camp-internal-note-form" onSubmit={(event) => {
+          event.preventDefault();
+          onSaveNote?.(enrollment.id);
+        }}>
+          <label htmlFor={`internal-note-${enrollment.id}`}>Note interne (visible uniquement par l'organisateur)</label>
+          <textarea
+            id={`internal-note-${enrollment.id}`}
+            maxLength={1000}
+            value={enrollment.internalNote ?? ""}
+            onChange={(event) => onNoteChange?.(enrollment.id, event.target.value)}
+          />
+          <button className="camp-button camp-button-light" type="submit" disabled={noteSaving}>
+            {noteSaving ? "Enregistrement…" : "Enregistrer la note interne"}
+          </button>
+        </form>
+      )}
       {!admin && enrollment.status !== "cancelled" && onRequestCancel && (
         <div className="camp-admin-actions">
           <button className="camp-button camp-button-outline" onClick={() => onRequestCancel(enrollment)}>Annuler ma réservation</button>
@@ -1010,22 +1038,28 @@ function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState<CampSession[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [contactConversations, setContactConversations] = useState<ContactConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [enrollmentSearch, setEnrollmentSearch] = useState("");
+  const [enrollmentSessionFilter, setEnrollmentSessionFilter] = useState("all");
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] = useState("all");
+  const [noteSavingId, setNoteSavingId] = useState<string | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replyBusyId, setReplyBusyId] = useState<string | null>(null);
 
   async function reload() {
     const [sessionResult, enrollmentResult, messageResult] = await Promise.all([
       api<{ sessions: CampSession[] }>("/api/admin/camp-sessions"),
       api<{ enrollments: Enrollment[] }>("/api/admin/camp-enrollments"),
-      api<{ messages: ContactMessage[] }>("/api/admin/contact-messages"),
+      api<{ conversations: ContactConversation[] }>("/api/admin/contact-messages"),
     ]);
     setSessions(sessionResult.sessions);
     setEnrollments(enrollmentResult.enrollments);
-    setContactMessages(messageResult.messages);
+    setContactConversations(messageResult.conversations);
     setError("");
   }
 
@@ -1044,6 +1078,20 @@ function AdminPage() {
   if (authLoading) return <LoadingPage />;
   if (!user) return <Navigate to={`/connexion?retour=${encodeURIComponent("/organisateur")}`} replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
+
+  const normalizedSearch = enrollmentSearch.trim().toLocaleLowerCase("fr");
+  const filteredEnrollments = enrollments.filter((enrollment) => {
+    if (enrollmentSessionFilter !== "all" && enrollment.session.id !== enrollmentSessionFilter) return false;
+    if (enrollmentStatusFilter !== "all" && enrollment.status !== enrollmentStatusFilter) return false;
+    if (!normalizedSearch) return true;
+    const searchable = [
+      enrollment.customer?.name,
+      enrollment.customer?.email,
+      enrollment.session.title,
+      ...enrollment.participants.flatMap((participant) => [participant.firstName, participant.lastName]),
+    ].join(" ").toLocaleLowerCase("fr");
+    return searchable.includes(normalizedSearch);
+  });
 
   async function createSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1127,6 +1175,105 @@ function AdminPage() {
     }
   }
 
+  function updateInternalNote(id: string, value: string) {
+    setEnrollments((current) => current.map((enrollment) => enrollment.id === id
+      ? { ...enrollment, internalNote: value }
+      : enrollment));
+  }
+
+  async function saveInternalNote(id: string) {
+    const enrollment = enrollments.find((item) => item.id === id);
+    if (!enrollment) return;
+    setNoteSavingId(id);
+    setError("");
+    setNotice("");
+    try {
+      await api(`/api/admin/camp-enrollments/${id}/note`, {
+        method: "PATCH",
+        body: JSON.stringify({ internalNote: enrollment.internalNote ?? "" }),
+      });
+      setNotice("La note interne a été enregistrée.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "La note interne n'a pas pu être enregistrée.");
+    } finally {
+      setNoteSavingId(null);
+    }
+  }
+
+  async function deleteSession(session: CampSession) {
+    if (!window.confirm(`Supprimer le départ « ${session.title} » ?`)) return;
+    setError("");
+    try {
+      await api(`/api/admin/camp-sessions/${session.id}`, { method: "DELETE" });
+      await reload();
+      setNotice("Le départ a été supprimé.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Le départ n'a pas pu être supprimé.");
+    }
+  }
+
+  async function updateConversationReadState(conversation: ContactConversation) {
+    setError("");
+    try {
+      await api(`/api/admin/contact-messages/${conversation.id}/read`, {
+        method: "PATCH",
+        body: JSON.stringify({ isRead: !conversation.isRead }),
+      });
+      setContactConversations((current) => current.map((item) => item.id === conversation.id
+        ? { ...item, isRead: !conversation.isRead }
+        : item));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "L'état de lecture n'a pas pu être modifié.");
+    }
+  }
+
+  async function sendOrganizerReply(event: FormEvent<HTMLFormElement>, conversation: ContactConversation) {
+    event.preventDefault();
+    const message = replyDrafts[conversation.id] ?? "";
+    setReplyBusyId(conversation.id);
+    setError("");
+    try {
+      const { message: reply } = await api<{ message: ContactMessage }>(
+        `/api/admin/contact-messages/${conversation.id}/replies`,
+        { method: "POST", body: JSON.stringify({ message }) },
+      );
+      setContactConversations((current) => current.map((item) => item.id === conversation.id
+        ? { ...item, isRead: true, messages: [...item.messages, reply] }
+        : item));
+      setReplyDrafts((current) => ({ ...current, [conversation.id]: "" }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "La réponse n'a pas pu être envoyée.");
+    } finally {
+      setReplyBusyId(null);
+    }
+  }
+
+  function exportEnrollments() {
+    const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [
+      ["Séjour", "Groupe", "Saison", "Début", "Fin", "Statut", "Client", "E-mail", "Participants"],
+      ...filteredEnrollments.map((enrollment) => [
+        enrollment.session.title,
+        ageGroupName[enrollment.session.ageGroup],
+        seasonName[enrollment.session.season],
+        enrollment.session.startDate,
+        enrollment.session.endDate,
+        statusName[enrollment.status],
+        enrollment.customer?.name ?? "",
+        enrollment.customer?.email ?? "",
+        enrollment.participants.map((participant) => `${participant.firstName} ${participant.lastName}`).join(", "),
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(";")).join("\r\n")}`;
+    const file = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `inscriptions-alpes-camp-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="camp-container camp-admin-page">
       <span className="camp-eyebrow">ESPACE ORGANISATEUR</span>
@@ -1154,8 +1301,22 @@ function AdminPage() {
         <h2>Départs configurés</h2>
         {loading && <p role="status">Chargement…</p>}
         {!loading && !sessions.length && <p>Aucun départ créé pour le moment.</p>}
-        <div className="camp-session-admin-list">
-          {sessions.map((session) => (
+        <div className="camp-session-admin-seasons">
+          {seasonSections.map(({ season, title }) => {
+            const seasonalSessions = sessions.filter((session) => session.season === season);
+            if (!seasonalSessions.length) return null;
+            return (
+              <section className="camp-session-season" key={season}>
+                <h3>{season === "summer" ? "☀️" : "❄️"} {title}</h3>
+                <div className="camp-session-admin-groups">
+                  {programs.map((program) => {
+                    const groupSessions = seasonalSessions.filter((session) => session.ageGroup === program.ageGroup);
+                    if (!groupSessions.length) return null;
+                    return (
+                      <details className="camp-session-season-group" key={program.ageGroup}>
+                        <summary>{program.title} · {groupSessions.length} départ(s)</summary>
+                        <div className="camp-session-admin-list">
+                          {groupSessions.map((session) => (
             <article className="camp-session-admin-card" key={session.id}>
               <div className="camp-session-admin-heading">
                 <span className="camp-eyebrow">{seasonName[session.season]} · {ageGroupName[session.ageGroup]}</span>
@@ -1166,6 +1327,7 @@ function AdminPage() {
               <div className="camp-session-admin-actions">
                 <button className="camp-button camp-button-outline" onClick={() => toggleRegistration(session)}>{session.registrationOpen ? "Fermer les inscriptions" : "Ouvrir les inscriptions"}</button>
                 <button className="camp-button camp-button-light" onClick={() => setEditingSessionId(editingSessionId === session.id ? null : session.id)}>{editingSessionId === session.id ? "Terminer" : "Modifier"}</button>
+                {!session.hasEnrollments && <button className="camp-button camp-button-outline" onClick={() => deleteSession(session)}>Supprimer</button>}
               </div>
               {editingSessionId === session.id && (
                 <form className="camp-form camp-session-form camp-session-edit" onSubmit={(event) => saveSession(event, session)}>
@@ -1183,30 +1345,87 @@ function AdminPage() {
                 </form>
               )}
             </article>
-          ))}
+                          ))}
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </section>
       <section className="camp-admin-section">
-        <h2>Demandes reçues <span>{enrollments.length}</span></h2>
+        <h2>Demandes reçues <span>{filteredEnrollments.length}/{enrollments.length}</span></h2>
         {loading && <p role="status">Chargement…</p>}
         {!loading && !enrollments.length && <p>Aucune demande pour le moment.</p>}
-        <div className="camp-enrollment-list">{enrollments.map((enrollment) => (
-          <EnrollmentCard key={enrollment.id} enrollment={enrollment} admin onUpdate={updateEnrollment} />
+        {!!enrollments.length && (
+          <div className="camp-enrollment-filters">
+            <label>Rechercher<input value={enrollmentSearch} onChange={(event) => setEnrollmentSearch(event.target.value)} placeholder="Nom, e-mail ou séjour" /></label>
+            <label>Séjour<select value={enrollmentSessionFilter} onChange={(event) => setEnrollmentSessionFilter(event.target.value)}>
+              <option value="all">Tous les séjours</option>
+              {sessions.map((session) => <option key={session.id} value={session.id}>{session.title}</option>)}
+            </select></label>
+            <label>Statut<select value={enrollmentStatusFilter} onChange={(event) => setEnrollmentStatusFilter(event.target.value)}>
+              <option value="all">Tous les statuts</option>
+              <option value="pending">En attente</option>
+              <option value="confirmed">Confirmée</option>
+              <option value="cancelled">Annulée</option>
+            </select></label>
+            <button className="camp-button camp-button-outline" type="button" onClick={exportEnrollments} disabled={!filteredEnrollments.length}>Exporter en CSV</button>
+          </div>
+        )}
+        {!loading && enrollments.length > 0 && !filteredEnrollments.length && <p>Aucune inscription ne correspond à ces filtres.</p>}
+        <div className="camp-enrollment-list">{filteredEnrollments.map((enrollment) => (
+          <EnrollmentCard
+            key={enrollment.id}
+            enrollment={enrollment}
+            admin
+            onUpdate={updateEnrollment}
+            onNoteChange={updateInternalNote}
+            onSaveNote={saveInternalNote}
+            noteSaving={noteSavingId === enrollment.id}
+          />
         ))}</div>
       </section>
       <section className="camp-admin-section">
-        <h2>Aide et contact <span>{contactMessages.length}</span></h2>
+        <h2>Aide et contact <span>{contactConversations.filter((conversation) => !conversation.isRead).length} non lu(s) · {contactConversations.length}</span></h2>
         {loading && <p role="status">Chargement…</p>}
-        {!loading && !contactMessages.length && <p>Aucun message reçu.</p>}
+        {!loading && !contactConversations.length && <p>Aucun message reçu.</p>}
         <div className="camp-contact-message-list">
-          {contactMessages.map((message) => (
-            <article className="camp-contact-message" key={message.id}>
+          {contactConversations.map((conversation) => (
+            <article className={`camp-contact-message${conversation.isRead ? "" : " camp-contact-message-unread"}`} key={conversation.id}>
               <div className="camp-contact-message-heading">
-                <b>{message.customer.name}</b>
-                <a href={`mailto:${message.customer.email}`}>{message.customer.email}</a>
-                <time dateTime={message.createdAt}>{formatDate(message.createdAt.slice(0, 10))}</time>
+                <b>{conversation.customer.name}</b>
+                <a href={`mailto:${conversation.customer.email}`}>{conversation.customer.email}</a>
+                <time dateTime={conversation.updatedAt}>{formatDate(conversation.updatedAt.slice(0, 10))}</time>
+                <button className="camp-button camp-button-light" onClick={() => updateConversationReadState(conversation)}>
+                  {conversation.isRead ? "Marquer comme non lu" : "Marquer comme lu"}
+                </button>
               </div>
-              <p>{message.message}</p>
+              <div className="camp-contact-thread">
+                {conversation.messages.map((message) => (
+                  <article className={`camp-contact-bubble camp-contact-bubble-${message.senderRole}`} key={message.id}>
+                    <b>{message.senderRole === "admin" ? "Organisateur" : conversation.customer.name}</b>
+                    <p>{message.message}</p>
+                    <time dateTime={message.createdAt}>{formatDate(message.createdAt.slice(0, 10))}</time>
+                  </article>
+                ))}
+              </div>
+              <form className="camp-form camp-contact-reply" onSubmit={(event) => sendOrganizerReply(event, conversation)}>
+                <label htmlFor={`reply-${conversation.id}`}>Répondre au client</label>
+                <textarea
+                  id={`reply-${conversation.id}`}
+                  required
+                  maxLength={3000}
+                  value={replyDrafts[conversation.id] ?? ""}
+                  onChange={(event) => setReplyDrafts((current) => ({ ...current, [conversation.id]: event.target.value }))}
+                />
+                <button className="camp-button camp-button-primary" disabled={replyBusyId === conversation.id}>
+                  {replyBusyId === conversation.id ? "Envoi…" : "Envoyer la réponse"}
+                </button>
+              </form>
             </article>
           ))}
         </div>
@@ -1222,10 +1441,24 @@ function ContactPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [conversation, setConversation] = useState<ContactConversation | null>(null);
+  const [conversationLoading, setConversationLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user || user.role !== "customer") return;
+    api<{ conversation: ContactConversation | null }>("/api/contact-messages/mine")
+      .then(({ conversation: current }) => {
+        setConversation(current);
+        setError("");
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "La conversation n'a pas pu être chargée."))
+      .finally(() => setConversationLoading(false));
+  }, [user]);
 
   if (authLoading) return <LoadingPage />;
   if (!user) return <Navigate to={`/connexion?retour=${encodeURIComponent("/aide-et-contact")}`} replace />;
   if (user.role === "admin") return <Navigate to="/organisateur" replace />;
+  const customer = { name: user.fullName, email: user.email };
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1233,12 +1466,21 @@ function ContactPage() {
     setError("");
     setNotice("");
     try {
-      await api("/api/contact-messages", {
+      const { message: sent } = await api<{
+        message: ContactMessage & { conversationId: string };
+      }>("/api/contact-messages", {
         method: "POST",
         body: JSON.stringify({ message }),
       });
+      setConversation((current) => ({
+        id: sent.conversationId,
+        isRead: false,
+        updatedAt: sent.createdAt,
+        customer: current?.customer ?? customer,
+        messages: [...(current?.messages ?? []), sent],
+      }));
       setMessage("");
-      setNotice("Votre message a bien été envoyé à l'organisateur.");
+      setNotice("Votre message a bien été envoyé. Tu retrouveras la réponse de l'organisateur dans cette conversation.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Le message n'a pas pu être envoyé.");
     } finally {
@@ -1254,8 +1496,23 @@ function ContactPage() {
       <p>Écris à l'organisateur pour toute question sur les séjours ou ta réservation. Il pourra te répondre à l'adresse {user.email}.</p>
       {notice && <p className="camp-success" role="status">{notice}</p>}
       {error && <p className="camp-form-error" role="alert">{error}</p>}
+      {conversationLoading && <p role="status">Chargement de la conversation…</p>}
+      {conversation && (
+        <section className="camp-contact-customer-thread" aria-labelledby="camp-contact-thread-title">
+          <h2 id="camp-contact-thread-title">Conversation avec l'organisateur</h2>
+          <div className="camp-contact-thread">
+            {conversation.messages.map((item) => (
+              <article className={`camp-contact-bubble camp-contact-bubble-${item.senderRole}`} key={item.id}>
+                <b>{item.senderRole === "admin" ? "Organisateur" : "Vous"}</b>
+                <p>{item.message}</p>
+                <time dateTime={item.createdAt}>{formatDate(item.createdAt.slice(0, 10))}</time>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       <form className="camp-form camp-contact-form" onSubmit={sendMessage}>
-        <label htmlFor="camp-contact-message">Ton message</label>
+        <label htmlFor="camp-contact-message">{conversation ? "Répondre à l'organisateur" : "Ton message"}</label>
         <textarea
           id="camp-contact-message"
           required

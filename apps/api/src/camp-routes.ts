@@ -108,6 +108,7 @@ async function enrollmentRows(where: string, values: unknown[] = []) {
     status: "pending" | "confirmed" | "cancelled";
     health_data_consent_at: Date;
     admin_note: string | null;
+    internal_note: string | null;
     cancellation_reason: string | null;
     created_at: Date;
     processed_at: Date | null;
@@ -121,7 +122,7 @@ async function enrollmentRows(where: string, values: unknown[] = []) {
     end_date: string | Date;
   }>(
     `SELECT e.id, e.camp_session_id, e.customer_user_id, e.status,
-            e.health_data_consent_at, e.admin_note, e.cancellation_reason, e.created_at, e.processed_at,
+            e.health_data_consent_at, e.admin_note, e.internal_note, e.cancellation_reason, e.created_at, e.processed_at,
             processor.full_name AS processor_name,
             customer.full_name AS customer_name, customer.email AS customer_email,
             s.title, s.season, s.age_group, s.start_date, s.end_date
@@ -295,42 +296,163 @@ router.post("/api/contact-messages", requireRole("customer"), contactMessageRate
   const { message } = z.object({
     message: z.string().trim().min(1, "Le message ne peut pas être vide.").max(3000),
   }).parse(request.body);
-  const result = await pool.query<{ id: string; created_at: Date }>(
-    `INSERT INTO contact_messages (customer_user_id, message)
-     VALUES ($1, $2)
-     RETURNING id, created_at`,
+  const result = await pool.query<{ id: string; thread_id: string; created_at: Date }>(
+    `WITH thread AS (
+       INSERT INTO contact_threads (customer_user_id, is_read)
+       VALUES ($1, FALSE)
+       ON CONFLICT (customer_user_id)
+       DO UPDATE SET is_read = FALSE, updated_at = NOW()
+       RETURNING id
+     )
+     INSERT INTO contact_messages (thread_id, customer_user_id, sender_role, message)
+     SELECT thread.id, $1, 'customer', $2 FROM thread
+     RETURNING id, thread_id, created_at`,
     [request.user!.id, message],
   );
   response.status(201).json({
     message: {
       id: result.rows[0]!.id,
+      conversationId: result.rows[0]!.thread_id,
+      message,
+      senderRole: "customer",
       createdAt: result.rows[0]!.created_at,
     },
   });
 });
 
-router.get("/api/admin/contact-messages", requireRole("admin"), async (_request, response) => {
+router.get("/api/contact-messages/mine", requireRole("customer"), async (request, response) => {
   const result = await pool.query<{
     id: string;
+    is_read: boolean;
+    updated_at: Date;
+    message_id: string;
     message: string;
-    created_at: Date;
+    sender_role: "customer" | "admin";
+    message_created_at: Date;
+  }>(
+    `SELECT thread.id, thread.is_read, thread.updated_at,
+            message.id AS message_id, message.message, message.sender_role,
+            message.created_at AS message_created_at
+     FROM contact_threads thread
+     JOIN contact_messages message ON message.thread_id = thread.id
+     WHERE thread.customer_user_id = $1
+     ORDER BY message.created_at, message.id`,
+    [request.user!.id],
+  );
+  const thread = result.rows[0];
+  response.json({
+    conversation: thread ? {
+      id: thread.id,
+      isRead: thread.is_read,
+      updatedAt: thread.updated_at,
+      customer: { name: request.user!.fullName, email: request.user!.email },
+      messages: result.rows.map((row) => ({
+        id: row.message_id,
+        message: row.message,
+        senderRole: row.sender_role,
+        createdAt: row.message_created_at,
+      })),
+    } : null,
+  });
+});
+
+router.get("/api/admin/contact-messages", requireRole("admin"), async (_request, response) => {
+  const result = await pool.query<{
+    thread_id: string;
+    is_read: boolean;
+    updated_at: Date;
+    message_id: string;
+    message: string;
+    sender_role: "customer" | "admin";
+    message_created_at: Date;
     customer_name: string;
     customer_email: string;
   }>(
-    `SELECT contact.id, contact.message, contact.created_at,
+    `SELECT thread.id AS thread_id, thread.is_read, thread.updated_at,
+            message.id AS message_id, message.message, message.sender_role,
+            message.created_at AS message_created_at,
             customer.full_name AS customer_name, customer.email AS customer_email
-     FROM contact_messages contact
-     JOIN users customer ON customer.id = contact.customer_user_id
-     ORDER BY contact.created_at DESC`,
+     FROM contact_threads thread
+     JOIN contact_messages message ON message.thread_id = thread.id
+     JOIN users customer ON customer.id = thread.customer_user_id
+     ORDER BY thread.updated_at DESC, message.created_at, message.id`,
   );
-  response.json({
-    messages: result.rows.map((row) => ({
-      id: row.id,
-      message: row.message,
-      createdAt: row.created_at,
+  const conversations = new Map<string, {
+    id: string;
+    isRead: boolean;
+    updatedAt: Date;
+    customer: { name: string; email: string };
+    messages: { id: string; message: string; senderRole: "customer" | "admin"; createdAt: Date }[];
+  }>();
+  for (const row of result.rows) {
+    const conversation = conversations.get(row.thread_id) ?? {
+      id: row.thread_id,
+      isRead: row.is_read,
+      updatedAt: row.updated_at,
       customer: { name: row.customer_name, email: row.customer_email },
-    })),
+      messages: [],
+    };
+    conversation.messages.push({
+      id: row.message_id,
+      message: row.message,
+      senderRole: row.sender_role,
+      createdAt: row.message_created_at,
+    });
+    conversations.set(row.thread_id, conversation);
+  }
+  response.json({
+    conversations: [...conversations.values()],
   });
+});
+
+router.post("/api/admin/contact-messages/:id/replies", requireRole("admin"), async (request, response) => {
+  const threadId = idSchema.parse(request.params.id);
+  const { message } = z.object({
+    message: z.string().trim().min(1, "Le message ne peut pas être vide.").max(3000),
+  }).parse(request.body);
+  const client = await pool.connect();
+  let messageId = "";
+  let createdAt: Date | null = null;
+  try {
+    await client.query("BEGIN");
+    const thread = await client.query<{ customer_user_id: string }>(
+      "SELECT customer_user_id FROM contact_threads WHERE id = $1 FOR UPDATE",
+      [threadId],
+    );
+    if (!thread.rowCount) throw new HttpError(404, "Cette conversation n'existe pas.");
+    const inserted = await client.query<{ id: string; created_at: Date }>(
+      `INSERT INTO contact_messages (thread_id, customer_user_id, sender_role, message)
+       VALUES ($1, $2, 'admin', $3)
+       RETURNING id, created_at`,
+      [threadId, thread.rows[0]!.customer_user_id, message],
+    );
+    messageId = inserted.rows[0]!.id;
+    createdAt = inserted.rows[0]!.created_at;
+    await client.query(
+      "UPDATE contact_threads SET is_read = TRUE, updated_at = NOW() WHERE id = $1",
+      [threadId],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  response.status(201).json({
+    message: { id: messageId, message, senderRole: "admin", createdAt },
+  });
+});
+
+router.patch("/api/admin/contact-messages/:id/read", requireRole("admin"), async (request, response) => {
+  const threadId = idSchema.parse(request.params.id);
+  const { isRead } = z.object({ isRead: z.boolean() }).parse(request.body);
+  const result = await pool.query(
+    "UPDATE contact_threads SET is_read = $2 WHERE id = $1 RETURNING id",
+    [threadId, isRead],
+  );
+  if (!result.rowCount) throw new HttpError(404, "Cette conversation n'existe pas.");
+  response.json({ conversation: { id: threadId, isRead } });
 });
 
 router.get("/api/admin/camp-sessions", requireRole("admin"), async (_request, response) => {
@@ -463,6 +585,33 @@ router.patch("/api/admin/camp-sessions/:id", requireRole("admin"), async (reques
   response.json({ session: { id: sessionId, endDate: endDate && dateOnly(endDate) } });
 });
 
+router.delete("/api/admin/camp-sessions/:id", requireRole("admin"), async (request, response) => {
+  const sessionId = idSchema.parse(request.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query<{ has_enrollments: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM camp_enrollments WHERE camp_session_id = camp_sessions.id
+       ) AS has_enrollments
+       FROM camp_sessions WHERE id = $1 FOR UPDATE`,
+      [sessionId],
+    );
+    if (!existing.rowCount) throw new HttpError(404, "Ce départ n'existe pas.");
+    if (existing.rows[0]!.has_enrollments) {
+      throw new HttpError(409, "Un départ avec une inscription ne peut pas être supprimé.");
+    }
+    await client.query("DELETE FROM camp_sessions WHERE id = $1", [sessionId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  response.status(204).end();
+});
+
 router.get("/api/admin/camp-enrollments", requireRole("admin"), async (_request, response) => {
   const result = await enrollmentRows("");
   const participants = await loadParticipants(result.rows.map((row) => row.id));
@@ -471,6 +620,7 @@ router.get("/api/admin/camp-enrollments", requireRole("admin"), async (_request,
       id: row.id,
       status: row.status,
       adminNote: row.admin_note,
+      internalNote: row.internal_note,
       cancellationReason: row.cancellation_reason,
       createdAt: row.created_at,
       processedAt: row.processed_at,
@@ -522,6 +672,22 @@ router.patch("/api/admin/camp-enrollments/:id", requireRole("admin"), async (req
     client.release();
   }
   response.json({ enrollment: { id: enrollmentId, status: input.status } });
+});
+
+router.patch("/api/admin/camp-enrollments/:id/note", requireRole("admin"), async (request, response) => {
+  const enrollmentId = idSchema.parse(request.params.id);
+  const { internalNote } = z.object({
+    internalNote: z.string().trim().max(1000).nullable(),
+  }).parse(request.body);
+  const result = await pool.query(
+    `UPDATE camp_enrollments
+     SET internal_note = $2, updated_at = NOW()
+     WHERE id = $1
+     RETURNING id`,
+    [enrollmentId, internalNote || null],
+  );
+  if (!result.rowCount) throw new HttpError(404, "Cette inscription n'existe pas.");
+  response.json({ enrollment: { id: enrollmentId, internalNote: internalNote || null } });
 });
 
 export default router;

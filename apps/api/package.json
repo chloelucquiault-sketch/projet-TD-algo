@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run && tsc --noEmit -p tsconfig.test.json",
     "db:migrate": "tsx src/db/migrate.ts",
-    "admin:create": "tsx src/db/create-admin.ts"
+    "admin:create": "tsx src/db/create-admin.ts",
+    "admin:reset-password": "tsx src/db/reset-admin-password.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

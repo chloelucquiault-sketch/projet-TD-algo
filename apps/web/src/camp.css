@@ -263,6 +263,8 @@ body { min-width: 320px; }
 .camp-cancellation-dialog h2 { margin: 0 0 10px; color: #3d5140; font: 700 22px "Manrope", sans-serif; }
 .camp-cancellation-dialog > p { margin-bottom: 18px; color: #67646b; font-size: 12px; line-height: 1.6; }
 .camp-cancellation-dialog .camp-admin-actions { justify-content: end; }
+.camp-internal-note-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e9e1dc; }
+.camp-internal-note-form textarea { min-height: 65px; }
 .camp-admin-section { margin: 36px 0; padding: 22px; border: 1px solid #ece3dc; background: #fff; }
 .camp-admin-section > h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 24px; }
 .camp-admin-section > h2 span { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: #f4ebe0; color: #a55059; font: 700 11px "DM Sans", sans-serif; }
@@ -272,6 +274,27 @@ body { min-width: 320px; }
 .camp-contact-message-heading a { color: #a55059; text-decoration: underline; }
 .camp-contact-message-heading time { margin-left: auto; color: #77727a; font-size: 10px; }
 .camp-contact-message > p { margin: 12px 0 0; color: #55545d; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.camp-contact-message-unread { border-left: 4px solid #718767; }
+.camp-contact-thread { display: grid; gap: 9px; margin-top: 15px; }
+.camp-contact-bubble { width: min(100%, 680px); padding: 12px 14px; background: #f3f5f0; }
+.camp-contact-bubble-admin { justify-self: end; background: #edf2e9; }
+.camp-contact-bubble > b { color: #3d5140; font-size: 10px; }
+.camp-contact-bubble > p { margin: 7px 0; color: #55545d; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.camp-contact-bubble > time { color: #77727a; font-size: 9px; }
+.camp-contact-reply { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e9e1dc; }
+.camp-contact-reply textarea { min-height: 80px; }
+.camp-contact-customer-thread { max-width: 760px; margin-top: 25px; padding: 20px; border: 1px solid #e4e8df; background: #fff; }
+.camp-contact-customer-thread h2 { margin: 0; color: #3d5140; font: 700 20px "Manrope", sans-serif; }
+.camp-session-admin-seasons { display: grid; gap: 22px; }
+.camp-session-season > h3 { margin: 0 0 10px; color: #4e6848; font: 700 18px "Manrope", sans-serif; }
+.camp-session-admin-groups { display: grid; gap: 8px; }
+.camp-session-season-group { border: 1px solid #e1e5dd; background: #fff; }
+.camp-session-season-group > summary { padding: 12px 14px; color: #3d5140; font-size: 12px; font-weight: 700; }
+.camp-session-season-group > .camp-session-admin-list { padding: 0 10px 10px; }
+.camp-enrollment-filters { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(150px, .7fr) minmax(130px, .55fr) auto; align-items: end; gap: 10px; margin-bottom: 16px; }
+.camp-enrollment-filters label { display: grid; gap: 6px; color: #55545d; font-size: 10px; font-weight: 650; }
+.camp-enrollment-filters input, .camp-enrollment-filters select { width: 100%; min-width: 0; border: 1px solid #ddd6d1; padding: 10px; background: #fff; color: #363943; font-size: 11px; }
+.camp-enrollment-filters .camp-button { white-space: nowrap; }
 .camp-session-form { max-width: 740px; }
 .camp-form-hint { margin: 0; color: #77727a; font-size: 10px; line-height: 1.6; }
 .camp-session-admin-list { display: grid; gap: 10px; }
@@ -353,6 +376,8 @@ body { min-width: 320px; }
   .camp-enrollment-card { padding: 15px 12px; }
   .camp-enrollment-card-head { flex-direction: column; }
   .camp-admin-actions { flex-direction: column; }
+  .camp-enrollment-filters { grid-template-columns: 1fr; }
+  .camp-enrollment-filters .camp-button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
