@@ -1,113 +1,127 @@
-# Prompt de développement — Séjours sportifs & hébergements en dortoirs
+# Prompt de développement — Alpes Camp
 
-Copie le prompt ci-dessous dans ton agent de développement pour lui demander de construire l'application.
+Copie le prompt ci-dessous dans ton agent de développement pour lui demander de travailler sur l'application de réservation de colonies Alpes Camp.
 
 ---
 
 ## Prompt
 
-Agis comme un développeur full-stack senior et construis une application web de réservation de séjours sportifs. Travaille directement dans le dépôt existant, en respectant ses conventions et en livrant une application exécutable, testée et documentée — pas seulement une proposition d'architecture ou des extraits de code.
+Agis comme un développeur full-stack senior. Tu travailles sur le projet **Alpes Camp**, une application de réservation de colonies sportives et de découverte dans les Alpes. Travaille directement dans le dépôt existant et livre une solution fonctionnelle, testée et documentée — pas seulement une proposition d'architecture ou des extraits de code.
 
-### Contexte produit
+### Contexte et objectif
 
-Le projet permet aux clubs, associations et sportifs d'organiser des séjours sportifs tout compris dans des complexes proposant :
+Alpes Camp permet aux familles de consulter des séjours d'été et d'hiver, de choisir un départ et de demander l'inscription d'un ou plusieurs participants. L'organisateur gère les départs, les demandes et les messages des familles.
 
-- des infrastructures pour un ou plusieurs sports ;
-- un hébergement en dortoirs ;
-- une option de restauration.
+Ce projet **n'est pas** une plateforme de réservation de séjours pour clubs sportifs : ne réintroduis pas de complexes, de réservation d'infrastructures sportives, de dortoirs, de repas, de tarifs ou de rôles de gestionnaire de complexe. Le [README.md](./README.md) est la référence fonctionnelle et doit rester cohérent avec le comportement réellement implémenté.
 
-Un séjour dure au minimum **deux nuits** et se réserve sur plusieurs jours ou semaines. Le client choisit un ou plusieurs sports, ses dates, renseigne la taille et le type de son groupe, puis sélectionne les dortoirs et l'option repas. La demande est soumise au gestionnaire, qui peut la suivre et la valider. Les rôles sont visiteur, client/responsable de club, gestionnaire et administrateur.
+L'application est une application web responsive, utilisable sur téléphone et ordinateur ; ce n'est pas une application native.
 
-Le README du dépôt est la référence produit : lis-le avant toute modification et garde-le cohérent avec le comportement réellement implémenté. La cible est une **application web responsive et mobile-first**, utilisable dans un navigateur sur téléphone ; ce n'est pas une application native React Native.
+### Public et séjours
 
-### Stack et qualité attendue
+Les quatre groupes et durées de référence sont :
 
-- Frontend : React et TypeScript.
-- Backend : Node.js, Express et TypeScript, exposant une API REST documentée.
-- Base de données : PostgreSQL, avec migrations versionnées.
-- Structure : séparation claire du frontend et de l'API. Choisis une organisation simple adaptée au dépôt, documente les décisions et évite les abstractions prématurées.
-- Fournis une configuration locale reproductible (scripts, variables d'environnement documentées, et environnement PostgreSQL de développement si approprié). Ne commets aucun secret.
-- Utilise des dépendances maintenues et des versions compatibles ; respecte le gestionnaire de paquets déjà présent. Si aucun n'est configuré, choisis-en un et documente-le.
-- Utilise une validation explicite des entrées, des erreurs API cohérentes et des types partagés ou clairement définis entre client et serveur.
+| Groupe | Âge recommandé | Durée |
+|---|---:|---:|
+| Les Petits | 5–7 ans | 4 jours |
+| Les Moyens | 7–12 ans | 7 jours |
+| Les Ados | 12–14 ans | 7 jours |
+| Adultes & Confirmés | 15 ans et plus | 7 jours |
 
-### Fonctionnalités MVP
+Les tranches d'âge sont des recommandations discutables avec l'organisateur. En revanche, tout participant doit avoir **au moins 5 ans au début du séjour**.
+
+Les séjours se déroulent dans les périodes inclusives suivantes :
+
+- Été : du 10 mai au 30 septembre.
+- Hiver : du 15 décembre au 31 mars ; un séjour peut traverser le changement d'année.
+
+La durée compte les dates calendaires de début et de fin incluses. Chaque départ a une capacité maximale de 20 participants. Les données préchargées pour la démonstration — dates, activités et disponibilités — sont fictives ; aucun lieu réel n'est défini.
+
+Les activités proposées doivent varier selon la saison et le groupe d'âge, autour du sport outdoor, de la découverte de la montagne, de la biodiversité et de l'écologie. Ne présente pas une activité technique comme garantie : elle dépend du lieu, de la météo, de la sécurité, des autorisations et d'un encadrement qualifié.
+
+### Stack et architecture existante
+
+Respecte la structure et les outils déjà présents dans le dépôt :
+
+- Frontend React, TypeScript, Vite et React Router.
+- API REST Node.js, Express et TypeScript.
+- PostgreSQL et migrations SQL versionnées.
+- npm workspaces.
+
+Avant de modifier quoi que ce soit, inspecte le code, les scripts, les migrations, le README et l'état Git. Réutilise les composants, helpers et conventions existants. N'ajoute pas une nouvelle architecture ou des dépendances si elles ne sont pas nécessaires.
+
+### Fonctionnalités attendues
 
 #### Catalogue public
 
-- Afficher les complexes et leurs informations : région, sports, infrastructures, capacité des dortoirs et options de restauration.
-- Filtrer au minimum par région, type de sport, période et capacité d'accueil.
-- Présenter les disponibilités et les détails nécessaires avant de commencer une demande de réservation.
+- Présenter les quatre groupes, leurs âges recommandés, durées et activités saisonnières.
+- Permettre de consulter et filtrer les départs par saison et groupe d'âge.
+- Afficher les dates, les places restantes et l'état d'ouverture des inscriptions.
+- Ne pas présenter les exemples fictifs comme une offre réelle.
 
-#### Parcours de réservation
+#### Inscription d'une famille
 
-Construis un parcours guidé et accessible :
+- Permettre de créer un compte client et de se connecter ; ne jamais permettre l'inscription publique d'un compte administrateur.
+- Permettre à un client connecté de demander l'inscription d'un ou plusieurs participants à un départ ouvert.
+- Collecter les données nécessaires aux participants et demander le consentement requis pour les informations de santé.
+- Afficher clairement les erreurs, le succès et les demandes dans « Mes inscriptions ».
+- Permettre au client d'annuler une réservation active en fournissant un motif.
 
-1. Choix d'un ou plusieurs sports et des infrastructures souhaitées.
-2. Choix des dates, avec une durée minimale de deux nuits et vérification des disponibilités côté serveur.
-3. Saisie du nombre de personnes et du type de groupe (club, association ou autre).
-4. Choix des dortoirs et de l'option repas, puis affichage d'un récapitulatif avant l'envoi.
-5. Création d'une demande consultable par le client et par le gestionnaire, avec un état explicite : en attente, confirmée ou annulée.
+#### Espace organisateur
 
-Conserve les données saisies lors du passage d'une étape à l'autre et affiche clairement les erreurs de validation, les indisponibilités et la confirmation d'envoi.
+- Réserver l'accès organisateur au compte administrateur et vérifier le rôle sur l'API.
+- Créer et modifier des départs, les présenter par saison et groupe d'âge et fermer les inscriptions.
+- Ne permettre la suppression d'un départ que s'il ne comporte aucune inscription.
+- Consulter, rechercher et filtrer les inscriptions ; exporter les résultats filtrés en CSV.
+- Traiter les demandes en attente (confirmer ou annuler) et ajouter des notes internes qui ne sont jamais exposées aux clients.
+- Consulter les messages d'aide et de contact, répondre dans un fil visible par le client et marquer le fil lu/non lu. Aucun e-mail automatique n'est prévu pour ces messages.
 
-#### Espaces authentifiés
+### Règles métier et limites à respecter
 
-- Permettre au client de créer un compte, de se connecter, de consulter ses demandes et d'en voir l'état.
-- Permettre au gestionnaire autorisé de créer et modifier les informations des complexes, sports, infrastructures, dortoirs, disponibilités et options de restauration, ainsi que de traiter les demandes de séjour.
-- Réserver les opérations d'administration de la plateforme au rôle administrateur.
-- Vérifier les autorisations côté serveur pour chaque opération : masquer un bouton dans l'interface ne constitue pas un contrôle d'accès.
+- Vérifier l'âge minimum de 5 ans à la date de début, côté interface **et** côté API.
+- Calculer les places disponibles par départ : `capacity - reserved_places`. Les participants des demandes en attente ou confirmées occupent une place ; l'annulation la libère.
+- Revérifier la capacité côté serveur dans une transaction PostgreSQL et empêcher les sur-réservations concurrentes.
+- Refuser l'inscription à un départ fermé ou passé, sans créer de demande partielle.
+- Conserver les statuts explicites : en attente, confirmée, annulée. Une demande n'est pas confirmée avant l'action de l'organisateur.
+- Garder les notes internes strictement privées ; exclure les données médicales et notes internes des exports CSV.
+- Le prix, les paiements, remboursements, lieu précis, programme garanti, transport et répartition d'hébergement ne sont pas définis. Ne les invente pas et ne simule aucun paiement.
+- Il n'y a pas de réinitialisation de mot de passe par e-mail configurée. N'affirme pas qu'elle fonctionne et ne crée pas un flux e-mail fictif.
 
-### Règles métier et points à ne pas inventer
+### Sécurité et mode de démonstration
 
-- Appliquer la durée minimale de deux nuits et valider les dates côté serveur.
-- La disponibilité ne doit jamais dépendre uniquement de l'interface. Le serveur et PostgreSQL doivent empêcher les sur-réservations et les conflits, y compris si plusieurs demandes arrivent simultanément.
-- Traiter une demande de réservation comme un ensemble cohérent : si une ressource indispensable n'est plus disponible, ne créer ni réservation partielle ni fausse confirmation.
-- Modéliser clairement les statuts et leurs transitions autorisées ; conserver qui a effectué une action et à quel moment lorsque c'est pertinent.
-- Le README ne définit pas encore la tarification, la politique d'annulation, les remboursements, les paiements en ligne, les horaires précis des activités, ni les règles de répartition des couchages et des repas. N'invente pas ces règles et ne simule pas un paiement réel. Identifie les décisions bloquantes et demande une clarification avant d'implémenter un comportement qui les suppose. Si elles ne bloquent pas le socle, documente les hypothèses retenues et garde ces parties configurables.
-- Ne suppose pas qu'une réservation est confirmée avant la validation du gestionnaire.
-
-### Exigences de sécurité et de fiabilité
-
-- Hasher les mots de passe avec un algorithme adapté ; ne jamais les stocker ni les journaliser en clair.
-- Protéger les routes selon le rôle et les ressources détenues/gérées par l'utilisateur ; appliquer le principe du moindre privilège.
-- Valider toutes les entrées côté serveur, utiliser des requêtes paramétrées et ne pas exposer de secrets ni de détails internes dans les réponses d'erreur.
-- Configurer correctement les origines autorisées, les sessions ou jetons, les cookies le cas échéant, et les protections contre les abus selon le mécanisme d'authentification choisi.
-- Utiliser des transactions PostgreSQL pour les opérations multi-ressources et les changements d'état sensibles.
-- Fournir des messages d'erreur utiles sans transformer les échecs en succès apparents. Ne pas ignorer silencieusement les erreurs.
+- Hacher les mots de passe ; ne jamais les stocker ou journaliser en clair.
+- Utiliser des requêtes SQL paramétrées, valider les entrées côté serveur et appliquer les permissions à chaque route.
+- Ne jamais exposer de secrets, de notes internes ni de données de participant à un autre client.
+- Utiliser des transactions pour les changements d'état et les opérations touchant aux places.
+- Le déploiement de cours active `DEMO_MODE=true` : les données de santé ne sont alors **pas chiffrées**. Dans cet environnement, ne saisir que des données fictives. Ne désactive pas ce mode et ne change pas la gestion du chiffrement sans autorisation et configuration sécurisée du serveur. En mode normal, suivre la configuration existante de chiffrement et ne jamais commettre de clés.
+- Ne pas introduire de message de réussite si une opération a échoué ; afficher des erreurs compréhensibles sans révéler de détails internes.
 
 ### Interface et accessibilité
 
-- Concevoir une interface en français, responsive et mobile-first.
-- Fournir des états de chargement, vide, succès et erreur pour les vues principales.
-- Rendre les formulaires utilisables au clavier, associer les libellés aux champs et rendre les erreurs compréhensibles.
-- Garder les étapes du parcours de réservation claires sur petit écran ; ne pas afficher de disponibilité comme garantie si elle n'a pas été vérifiée côté serveur.
+- Utiliser le français et préserver le style existant.
+- Soigner l'affichage mobile, les états chargement/vide/succès/erreur et les retours après action.
+- Associer les libellés aux champs, supporter la navigation clavier et rendre les erreurs compréhensibles.
+- Ne pas considérer les contrôles du navigateur comme une protection : l'API reste responsable des règles métier et des autorisations.
 
 ### Tests et critères d'acceptation
 
-Ajoute et exécute des tests adaptés au projet :
+Ajoute ou adapte des tests couvrant, selon la modification :
 
-- tests unitaires des validations et règles métier, notamment les dates et la durée minimale ;
-- tests d'intégration de l'API et de la persistance PostgreSQL ;
-- tests des permissions : un client ne peut pas administrer un complexe, un gestionnaire ne peut pas administrer des ressources hors de son périmètre, et les opérations administrateur sont protégées ;
-- tests de réservation concurrente ou, à défaut, tests démontrant que la transaction et les contraintes empêchent une sur-réservation ;
-- tests du parcours principal côté interface et des états d'erreur essentiels.
+- les périodes saisonnières, durées inclusives, âge minimum et validations de formulaire ;
+- la création d'une demande normale, les entrées vides et les cas limites ;
+- les permissions client/administrateur et l'isolation des données ;
+- les places restantes, l'annulation et les conflits de capacité ;
+- la messagerie, les notes internes, l'export et la suppression sécurisée des départs ;
+- les parcours React et leurs états d'erreur.
 
-Le MVP est acceptable lorsque :
-
-1. l'application et PostgreSQL peuvent être démarrés à partir des instructions du dépôt ;
-2. un visiteur peut consulter et filtrer les complexes ;
-3. un client authentifié peut soumettre une demande valide d'au moins deux nuits et consulter son état ;
-4. un gestionnaire autorisé peut gérer les informations de son complexe et traiter les demandes ;
-5. les règles de rôle et les protections contre les conflits de disponibilité sont vérifiées par des tests ;
-6. les commandes de test, de lint et de build disponibles passent, ou les blocages restants sont explicitement rapportés.
+Exécute le build et les tests pertinents du dépôt. Les tests PostgreSQL d'intégration nécessitent une base de test dédiée ; si elle n'est pas configurée, indique clairement lesquels ont été ignorés plutôt que de les présenter comme réussis.
 
 ### Méthode de travail et livraison
 
-1. Inspecte le dépôt, son README, ses scripts et son état Git avant de modifier quoi que ce soit. Préserve les changements existants.
-2. Résume brièvement l'architecture proposée et liste les questions métier qui bloquent une décision structurante. Pose les questions avant de coder si une réponse est indispensable ; sinon, adopte des valeurs par défaut prudentes, annonce-les et documente-les.
-3. Implémente le MVP par étapes cohérentes, sans remplacer une implémentation fonctionnelle par des maquettes ou des données fictives dans le chemin normal d'exécution.
-4. Ajoute ou mets à jour les migrations, tests, exemples de configuration et documentation nécessaires.
-5. Exécute les vérifications ciblées, corrige les problèmes introduits et rapporte précisément les commandes exécutées et leurs résultats.
-6. Termine par un résumé des fichiers et fonctionnalités livrés, des hypothèses restantes et des étapes nécessaires pour lancer l'application.
+1. Inspecte le dépôt, le README, les fichiers directement concernés et l'état Git. Préserve toutes les modifications préexistantes.
+2. Si une décision produit importante n'est pas déterminée par le README ou le code, pose une question avant d'implémenter ; sinon, adopte l'option la plus simple et explique-la.
+3. Implémente le changement complet sur toutes les surfaces concernées : interface, API, persistance, migrations, tests et documentation.
+4. N'ajoute pas de fonctionnalités hors du périmètre des colonies et n'introduis pas les règles de l'ancien projet de séjours pour clubs.
+5. Vérifie le changement avec les commandes ciblées, corrige les erreurs introduites et rapporte les résultats exacts ainsi que les limites restantes.
+6. Termine par un résumé des fichiers et comportements modifiés.
 
-Ne fais pas de commit et ne pousse pas vers GitHub sans demande explicite.
+Ne fais pas de commit, de push ou de déploiement sans demande explicite.
