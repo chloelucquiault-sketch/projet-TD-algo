@@ -13,9 +13,9 @@ Les âges sont des repères, à discuter au cas par cas avec l'organisateur :
 | Les Ados | 12–14 ans | 7 jours |
 | Adultes & Confirmés | 15 ans et plus | 7 jours |
 
-Chaque départ est limité à **20 participants**. Huit départs de démonstration sont préchargés et ouverts aux inscriptions ; leurs dates, descriptions et activités sont fictives et ne constituent pas une offre réelle. Aucun lieu n'est défini.
+Chaque départ est limité à **20 participants**. Quarante départs de démonstration sont préchargés et ouverts aux inscriptions : cinq par saison et par groupe d'âge. Leurs dates, descriptions et activités sont fictives ; aucun lieu n'est défini et ils ne constituent pas une offre réelle.
 
-Les fiches de séjour présentent des idées d'activités outdoor et nature distinctes pour l'été et l'hiver, adaptées aux quatre groupes d'âge. Les activités, dates et places restantes sont affichées pour chaque départ ouvert à la réservation ; celles des départs de démonstration sont fictives. Les sorties techniques, bivouacs et activités avec des mineurs nécessitent un encadrement qualifié et restent soumises à la météo, à la sécurité, au lieu et aux autorisations.
+Les fiches de séjour présentent des idées d'activités outdoor et nature adaptées à chaque groupe et à chaque saison. Pour chaque départ ouvert, le site affiche les dates et les places restantes. Les sorties techniques, bivouacs et activités avec des mineurs nécessitent un encadrement qualifié et restent soumis à la météo, à la sécurité, au lieu et aux autorisations.
 
 Chaque fiche de tranche d'âge comprend une galerie de photos illustrant les activités, avec des textes alternatifs et les crédits/licences associés. Ces photos sont illustratives et ne représentent pas nécessairement le lieu exact d'un séjour.
 
@@ -35,12 +35,12 @@ Chaque fiche de tranche d'âge comprend une galerie de photos illustrant les act
 
 ## Calendrier des saisons
 
-Les dates de saison sont inclusives. Un séjour entier, date de fin comprise, doit rester dans sa période :
+Les périodes sont inclusives : le séjour entier, date de fin comprise, doit s'y dérouler.
 
 - **Hiver** : du 15 décembre au 31 mars ; un séjour d'hiver peut traverser le changement d'année.
 - **Été** : du 10 mai au 30 septembre.
 
-Le 31 septembre n'existe pas : la fin de la saison d'été est donc fixée au **30 septembre**. L'API valide la période et PostgreSQL la protège également par une contrainte ; un départ qui dépasse la fenêtre est refusé.
+L'API et PostgreSQL refusent les départs qui dépassent ces périodes.
 
 ### Départs de démonstration
 
@@ -57,7 +57,7 @@ Les migrations `009_demo_camp_sessions.sql`, `011_additional_camp_sessions.sql` 
 | Été 2027 | Les Ados | 15–21 mai ; 10–16 juin ; 18–24 juillet ; 1–7 août ; 1–7 septembre |
 | Été 2027 | Adultes & Confirmés | 10–16 mai ; 10–16 juin ; 10–16 juillet ; 15–21 et 25–31 août |
 
-Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indication du mois après le jour. Ce calendrier et les activités affichées sont fictifs, destinés à la démonstration et modifiables dans la base par l'organisateur. Ils ne garantissent pas qu'un séjour aura lieu.
+Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indication du mois après le jour. Ce calendrier est fictif et modifiable par l'organisateur ; il ne garantit pas qu'un séjour aura lieu.
 
 ## Fonctionnalités
 
@@ -69,7 +69,7 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - Affichage du nombre de places restantes pour chaque départ ; la réservation est proposée uniquement lorsqu'il reste des places.
 - Jauge publique actualisée toutes les 15 secondes ; la disponibilité est toujours revérifiée au moment de l'inscription.
 - Inscription réservée aux comptes connectés, avec un formulaire permettant d'inscrire une fratrie.
-- Informations de naissance et consignes pratiques ; les données de santé sont chiffrées en mode normal et non chiffrées dans la démonstration fictive.
+- Formulaire pour les participants et leurs consignes pratiques ; les données de santé sont chiffrées en mode normal, mais pas en mode démo.
 - Demandes avec états explicites **en attente**, **confirmée** ou **annulée**. Une demande en attente bloque les places jusqu'à son traitement.
 - Espace client pour consulter uniquement ses propres inscriptions et leurs détails, et annuler une réservation active en transmettant un motif à l'organisateur.
 - Formulaire « Aide et contact » pour envoyer un message à l'organisateur ; les messages et coordonnées sont consultables dans sa boîte de réception privée.
@@ -87,6 +87,50 @@ Les dates de chaque ligne sont indiquées dans l'ordre chronologique, sauf indic
 - Aucun calendrier ou programme réel, lieu précis, prix, paiement, remboursement ou règle de répartition n'est configuré ou simulé.
 - Aucun paiement n'est collecté.
 - Les prochains départs réels doivent être validés par l'organisateur. Un départ ne peut plus changer de dates, saison ou groupe après la création d'une inscription.
+
+## Démonstration et essais
+
+### Scénario principal
+
+Une famille veut inscrire un enfant à un séjour. Elle choisit une saison, un groupe d'âge puis un départ ouvert, se connecte à son compte client et renseigne les informations du participant ainsi que le consentement demandé. Après validation, la demande apparaît dans « Mes inscriptions » avec le statut **en attente** ; l'organisateur peut ensuite la confirmer ou l'annuler.
+
+Pour le montrer : ouvrir une fiche de séjour, choisir un départ avec des places disponibles, envoyer une demande avec des données fictives, puis consulter « Mes inscriptions ». Les départs de démonstration sont fictifs : ne saisis pas de vraies informations personnelles ou médicales.
+
+### Règle de disponibilité et modèle de données
+
+Chaque départ (`camp_sessions`) a une clé primaire `id`, une capacité de 20 places et un compteur `reserved_places`. Le nombre affiché est calculé ainsi :
+
+```text
+places restantes = capacity - reserved_places
+```
+
+Par exemple, pour une capacité de 20 et 3 places déjà réservées, il reste `20 - 3 = 17` places. Les participants de demandes **en attente** et **confirmées** comptent dans le compteur ; l'annulation libère leurs places. Au moment de l'inscription, l'API revérifie la disponibilité dans une transaction PostgreSQL afin d'éviter de dépasser la capacité si plusieurs demandes arrivent simultanément.
+
+Les principales relations sont `camp_enrollments.camp_session_id → camp_sessions.id`, `camp_enrollments.customer_user_id → users.id` et `camp_participants.enrollment_id → camp_enrollments.id`. Une demande peut donc concerner un départ et un client, et contenir un ou plusieurs participants.
+
+Exemple de requête pour voir les départs ouverts et leur disponibilité :
+
+```sql
+SELECT id, title, start_date, end_date, capacity, reserved_places,
+       capacity - reserved_places AS remaining_places
+FROM camp_sessions
+WHERE registration_open = TRUE
+ORDER BY start_date;
+```
+
+### Protocole de vérification manuel
+
+| Essai | Entrée | Résultat attendu |
+|---|---|---|
+| Parcours normal | Un départ ouvert avec au moins une place, un participant d'au moins 5 ans au début du séjour et le consentement coché | La demande est envoyée, apparaît dans « Mes inscriptions » en attente et la place est comptabilisée. |
+| Formulaire incomplet | Omettre un champ obligatoire, par exemple le nom, ou ne pas cocher le consentement | Le formulaire empêche l'envoi ; aucune demande n'est créée. |
+| Cas limite d'âge | Pour un départ du 1er juillet 2027, saisir une naissance au 2 juillet 2022 (l'enfant n'a que 4 ans au début du séjour) | L'inscription est refusée avec un message indiquant que chaque participant doit avoir au moins 5 ans. Une naissance au 1er juillet 2022 atteint exactement la limite et est acceptée pour cette règle. |
+
+Les tests automatisés liés au parcours et à la limite d'âge se trouvent dans `apps/web/src/camp-pages.test.tsx` ; les contrôles du modèle et du consentement sont dans `apps/api/src/camp-validation.test.ts`. Pour une démonstration, rejouer les essais avec des données fictives et expliquer la différence entre résultat attendu et résultat observé.
+
+### Explication orale possible (environ deux minutes)
+
+> Une famille sélectionne un départ et envoie un formulaire React. React vérifie les champs obligatoires et l'âge minimal, puis envoie les données à l'API Express. L'API vérifie à nouveau le consentement, l'âge, l'ouverture du départ et les places restantes ; elle ne se contente donc pas des contrôles du navigateur. PostgreSQL stocke la demande et les participants, et met à jour le nombre de places dans la même transaction. L'API renvoie le résultat, que l'application affiche dans « Mes inscriptions ». J'ai vérifié un cas normal, un formulaire incomplet et une naissance qui ne respecte pas l'âge minimal. Une limite actuelle est que les départs de démonstration, leurs dates et leurs places sont fictifs ; le site ne gère ni paiement ni réservation de lieu.
 
 ## Données de santé et confidentialité
 
